@@ -1,0 +1,69 @@
+Keepqueue Server (Express) — TODO
+
+Conventions
+- Messaging: SMS and Email notifications
+- Deployment: Docker
+- API base paths: /actions (mutations) and /data (queries) as mounted in `src/main_router.ts`
+
+
+1) AuthN/AuthZ & Roles
+- Middleware verify_auth (Firebase ID token)
+- Role model: Owner,  Customer (custom claims for Owner/Staff)
+
+2) Appointments
+- Endpoints
+  - POST /actions/businesses/appointments/create 
+  - POST /actions/businesses/appointments/cancel
+  - POST /actions/businesses/appointments/confirm 
+- utils to Double-booking prevention (unique slot lock per service)
+
+3) Waitlist
+- Endpoints
+  - POST /actions/businesses/waitlist
+  - GET /data/businesses/waitlist/:business_id
+  - POST /actions/businesses/waitlist/delete
+- Service: on slot free, select candidate by policy, send SMS with reservation TTL
+
+4) Reviews & Ratings
+- Endpoints
+  - POST /actions/businesses/reviews/create (allowed after completed appointment)
+  - GET /data/businesses/reviews/:business_id
+  - GET /data/businesses/ratings/:business_id (averages, counts)
+- Moderation fields and visibility rules
+
+5) Problematic Customers
+- Track metrics per customer: no_show_count, cancel_rate
+- Threshold-based blocking (configurable per business)
+- Owner alert record in notifications
+
+6) Reports & Analytics
+- Aggregations: bookings_by_period, no_show_rate, revenue_by_service, top_services
+- Data endpoints under /data/analytics; daily snapshot job + on-demand computation fallback
+- On-demand compute triggers under /actions/analytics (idempotent)
+
+7) Notification Service
+- Outbound client: templated messages (SMS reminders, email confirmations)
+- Template registry + variable mapping
+- Retry with exponential backoff; persist delivery status
+
+8) Schedulers / Background Jobs
+- Reminder scheduler: query appointments N hours before start_time; send SMS reminders
+- Cleanup job: expire holds and waitlist reservations
+- GKE CronJobs invoking internal safe/idempotent endpoints
+
+9) Security & Compliance
+- Rate limiting (express-rate-limit)
+- Webhook IP allow-list + signature verification
+- Audit logging for sensitive actions
+- Align Firestore security rules to server access (minimize direct client writes)
+
+10) Observability
+- Structured logging (winston/pino) with request_id/user_id correlation
+- GET /data/metrics for Prometheus (histograms, counters)
+- Error categorization and alert hooks
+
+
+Deliverables
+- HTTPS API with documented endpoints and guards
+- OpenAPI kept in sync with routes
+- MVP flows: booking, availability, reminders, waitlist, reviews, analytics
