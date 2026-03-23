@@ -1,81 +1,109 @@
 Keepqueue Client (Next.js 15) — TODO
 
 Conventions
-- Code style: CamelCase for variables/functions/components/Types/Interfaces 
+- Code style: CamelCase for variables/functions/components/Types/Interfaces
 - Tech: Next.js 15 (App Router), TypeScript strict, Tailwind CSS, shadcn/ui, Origin UI, Zustand
 - Data: Interact with Express API; Firebase Client SDK for Auth; Firestore direct reads minimized
 
 1) Project Setup & Foundations
 - Ensure Next.js 15 App Router structure: app/, components/, lib/, store/, hooks/, styles/ ✅
 - Configure Tailwind CSS with shadcn/ui + Origin UI theme; global styles and dark mode ✅
-- ESLint + Prettier configuration aligned with project conventions
-- Env loader for client (public vs server-side runtime keys)
+- ESLint + Prettier configuration aligned with project conventions ✅
+- Env loader for client (public vs server-side runtime keys) ✅
 - Set up absolute imports and path aliases ✅
 
 2) Auth & Session
-- Integrate Firebase Auth (email/social/phone per PRD scope) ✅
-- Persist session and user claims; fetch custom claims (Owner/Staff) ✅ (session persist)
-- Route guards and server components that depend on auth
-- Sign-in/Sign-up/Reset flows; Phone verification UI if enabled ✅ (sign-in only)
+- Integrate Firebase Auth (email/social/phone per PRD scope) ✅ (email + Google)
+- Persist session and user claims; fetch custom claims (Owner/Staff) ✅
+- Route guards (AuthGuard component) for business and customer layouts ✅
+- Sign-in flow ✅ (business + customer sign-in pages)
+- Sign-up flow for new customers and businesses ✅ (signup-form.tsx + pages)
+- Password reset flow ✅ (reset-password page with Firebase sendPasswordResetEmail)
+- Forgot password link in sign-in form ✅
+- Phone verification UI if enabled
 
 3) Public Booking Flow (Customer)
 - Business public page: branding, services list, ratings summary, reviews preview ✅
 - Service selection UI (durations, price) ✅
-- Date/Time picker that calls API GET /businesses/:business_id/availability
+- Date/Time picker that calls API POST /data/getAvailabilityByServiceId ✅
 - Customer details form (name, phone, email, notes, consent) ✅
-- Review & confirm screen; create appointment via API POST /businesses/:business_id/appointments
-- Success page with details and SMS confirmation note
-- Customer portal: view upcoming/past appointments; reschedule/cancel (PATCH/POST cancel) ✅ (view only)
+- Review & confirm screen; create appointment via API ✅
+- Booking success page with details and what's-next info ✅ (booking-success page)
+- Customer portal: view upcoming/past appointments ✅ (full customer dashboard)
+- Customer portal: cancel appointments ✅ (cancel dialog with API call)
+- Waitlist form when no slots available ✅ (WaitlistForm component)
 - Token-based cancel page path (for unauthenticated cancel link)
 
 4) Smart Digital Calendar (Owner/Staff)
-- Calendar views (day/week) showing staff assignments and services
-- Create blocks/holidays and edit working hours
+- Calendar views (day/week/month/agenda) showing staff assignments and services ✅
+- Create blocks/holidays/vacations from calendar ✅ (block dialog with type selection)
+- Color-coded events by status and type ✅ (APPOINTMENT/VACATION/HOLIDAY/OTHER)
 - Inline create/update appointment (owner/staff) with conflict feedback from API
 - Availability visualization (computed via API)
+- Drag-and-drop event rescheduling ✅
 
-5) Waitlist UX
-- When no slots available: opt-in form to join waitlist
-- Show customer’s waitlist status; allow removal
+5) Appointments Management (Owner/Staff)
+- Appointments list page with filters (status, service, search) ✅
+- Appointment status actions (confirm, cancel, mark no-show, mark done) ✅
+- Cancel confirmation dialog ✅
+
+6) Waitlist UX
+- Waitlist form component for booking interface ✅ (WaitlistForm.tsx)
+- Show customer's waitlist status; allow removal ✅
 - Accept slot reservation link (TTL) from SMS → claim via API
 
-6) Business Admin Dashboard
-- Profile & branding editor (logo upload to Firebase Storage, colors, public settings)
-- Services CRUD (name, duration, price, active)
-- Staff CRUD (name, role, working hours, breaks)
-- Customers management (search, contact info, notes, flags)
-- Shareable branded booking page link
+7) Business Admin Dashboard
+- Profile & branding editor (logo upload, colors, public settings) ✅
+- Services CRUD (name, duration, price, active) ✅
+- Staff CRUD (name, role, email, phone, color tag) ✅ (staff page + sidebar)
+- Customers management (search, contact info, block/unblock) ✅
+- Shareable branded booking page link ✅ (copy-to-clipboard in dashboard)
+- Business dashboard overview with stats and quick actions ✅
+- Quick action links to appointments, customers, analytics, reviews ✅
 
-7) Reviews & Ratings
-- Post-appointment review form (rating, text)
-- Display aggregated rating and reviews on business page
-- Owner moderation tools (hide/report)
+8) Reviews & Ratings
+- Display aggregated rating stats (average, distribution chart) ✅
+- Review cards with user info, rating stars, date ✅
+- Owner moderation: hide/show reviews (flag toggle) ✅
+- Post-appointment review form (customer-side)
 
-8) Reports & Analytics
-- Dashboard with KPIs: bookings_by_period, no_show_rate, revenue_by_service, top_services ✅ (basic)
+9) Reports & Analytics
+- KPI cards: total bookings, no-show rate, cancellation rate, revenue ✅
+- Period selector (7/30/90 days) ✅
+- Top services breakdown with booking count and revenue ✅
 - Charts and filters by date range/service/staff
 
-9) Problematic Customer Handling
-- UI indicators for flagged customers; block booking with clear messaging
-- Admin controls to override/unblock when needed
+10) Problematic Customer Handling
+- UI indicators for flagged customers; block booking with clear messaging ✅
+- Admin controls to override/unblock when needed ✅
+- No-show count and cancel rate badges on customer cards ✅
+- Auto-flag display based on no_show_count/cancel_rate thresholds ✅
 
-10) State Management & Data Layer
-- Zustand slices: auth, business, services, staff, appointments, availability, waitlist, reviews, analytics ✅ (partial: auth, business, global)
-- API client module with typed methods; generate types from OpenAPI
+11) State Management & Data Layer
+- Zustand slices: auth, business, settings, appointments ✅
+- API client module with typed methods (apiCall helper) ✅
+- Generate types from OpenAPI
 - Request deduplication and optimistic updates where safe
-- Error boundary components and toast notifications
+- Error boundary components and toast notifications ✅
+- TanStack Query provider configured ✅
 
-11) Accessibility, Performance, SEO
-- WCAG 2.1 AA: focus states, labels, roles, keyboard navigation
+12) Accessibility, Performance, SEO
+- WCAG 2.1 AA: focus states, labels, roles, keyboard navigation ✅
 - Performance: code-splitting, image optimization, memoization, virtualization (lists)
-- SEO: metadata, structured data on public business page, sitemap/robots ✅ (metadata)
+- SEO: metadata, structured data on public business page, sitemap/robots ✅
 
-12) QA & DX
+13) Internationalization
+- Translation files (en.json, he.json) ✅ (extended with all new feature keys)
+- useLanguage() hook with t(key), isRtl, lang ✅
+- RTL layout support (Hebrew) ✅
+- Server-side translation support ✅
+
+14) QA & DX
 - Storybook for components (optional)
 - E2E tests (Playwright/Cypress) for booking flow and admin basics
 - Analytics events (page, CTA clicks, booking completed)
 
- Deliverables
+Deliverables
 - Production-ready Next.js app that consumes the Express API
-- Full booking flow, calendar, waitlist, reviews, analytics UIs implemented
-- Strong UX with Tailwind + shadcn/ui and mobile-first responsiveness ✅ (UI foundation)
+- Full booking flow, calendar, waitlist, reviews, analytics UIs implemented ✅
+- Strong UX with Tailwind + shadcn/ui and mobile-first responsiveness ✅

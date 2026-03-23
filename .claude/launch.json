@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "keepqueue-client",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["C:/Users/avrah/AppData/Roaming/npm/node_modules/pnpm/bin/pnpm.cjs", "--dir", "keepqueue-client", "dev"],
+      "port": 3000
+    },
+    {
+      "name": "keepqueue-server",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["C:/Program Files/nodejs/node_modules/npm/bin/npm-cli.js", "start", "--prefix", "keepqueue-server"],
+      "port": 9000
+    }
+  ]
+}
