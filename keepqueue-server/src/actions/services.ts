@@ -1,0 +1,66 @@
+import { jsonFailed, jsonOK } from "../helpers";
+import { RouterService } from "../types";
+import { auth, verifyToken, db, firebaseTimestamp } from "../firebase";
+import { cacheManager } from "../managers";
+import { logger } from "../managers";
+
+export const SLogin: RouterService = async (req, res, next) => {
+    try {
+        const decoded = await verifyToken(req.headers.authorization);
+        if (!decoded) {
+            res.status(401).json(jsonFailed("Invalid token"));
+            return;
+        }
+
+        const usersMap = cacheManager.get("usersMap", new Map());
+        const user = usersMap.get(decoded.uid);
+
+        if (user) {
+            // Update last login
+            await db.collection("users").doc(decoded.uid).update({
+                lastLoginAt: firebaseTimestamp(),
+                timestamp: firebaseTimestamp(),
+            });
+
+            // Sync custom claims if needed
+            const currentClaims = decoded.role || decoded.user_type;
+            if (currentClaims !== user.type) {
+                await auth.setCustomUserClaims(decoded.uid, {
+                    role: user.type,
+                    user_type: user.type,
+                });
+            }
+
+            res.json(jsonOK({ user, isNew: false }));
+        } else {
+            // New user — return minimal info, client will create the user document
+            res.json(jsonOK({
+                user: {
+                    id: decoded.uid,
+                    email: decoded.email,
+                    phone: decoded.phone_number || "",
+                },
+                isNew: true,
+            }));
+        }
+    } catch (error) {
+        logger.error("Login error:", error);
+        next(error);
+    }
+};
+
+export const SSetCustomClaims: RouterService = async (req, res, next) => {
+    try {
+        const { userId, claims } = req.body as { userId: string; claims: Record<string, any> };
+        if (!userId || !claims) {
+            res.json(jsonFailed("userId and claims are required"));
+            return;
+        }
+
+        await auth.setCustomUserClaims(userId, claims);
+        res.json(jsonOK({ userId, claims }));
+    } catch (error) {
+        logger.error("Set custom claims error:", error);
+        next(error);
+    }
+};
