@@ -1,14 +1,21 @@
 import { z } from "zod";
 
-const { object, string, array, any } = z;
+const { object, string, array } = z;
+
+const FORBIDDEN_FIELD_PARTS = new Set(["__proto__", "constructor", "prototype"]);
+
+const primitiveValue = z.union([z.string().max(1500), z.number(), z.boolean(), z.null()]);
+const conditionValue = z.union([primitiveValue, z.array(primitiveValue).max(30)]);
 
 export const getCollectionSchema = object({
     collectionName: string().min(4).max(20),
     conditions: array(
         object({
-            fieldName: string(),
+            fieldName: string()
+                .regex(/^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*$/)
+                .refine((name) => !name.split(".").some((part) => FORBIDDEN_FIELD_PARTS.has(part))),
             operator: z.enum(["==", "!=", ">", ">=", "<", "<=", "in", "not-in", "array-contains"]),
-            value: any(),
+            value: conditionValue,
         })
     ).optional(),
     conditionsType: z.enum(["and", "or"]).optional(),

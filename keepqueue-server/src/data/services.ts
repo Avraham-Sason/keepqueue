@@ -32,7 +32,7 @@ export const S_getCollection: RouterService = async (req, res, next) => {
 export const S_getBusiness: RouterService = async (req, res, next) => {
     const { businessId, ownerId } = req.body as GetBusinessModel;
     if (!businessId && !ownerId) {
-        res.json(jsonFailed("Business ID or owner ID is required"));
+        res.status(400).json(jsonFailed("Business ID or owner ID is required"));
         return;
     }
 

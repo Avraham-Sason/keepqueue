@@ -1,3 +1,4 @@
+import helmet from "helmet";
 import express, { Express } from "express";
 import cors from "cors";
 import { logger } from "../managers";
@@ -29,6 +30,13 @@ export const initEnvVariables = (requiredVars: string[] = []) => {
     return envVars;
 };
 
+const DEFAULT_ORIGINS = ["https://keepqueue.com", "https://www.keepqueue.com", "http://localhost:3000", "http://localhost:3001"];
+
+export const allowedOrigins = (configured?: string): string[] =>
+    configured
+        ? configured.split(",").map((origin) => origin.trim()).filter(Boolean)
+        : DEFAULT_ORIGINS;
+
 export const startServer = async (mainRouter: MainRouter, port?: number): Promise<Express> => {
     const app: Express = express();
     app.set("trust proxy", 1);
@@ -36,8 +44,9 @@ export const startServer = async (mainRouter: MainRouter, port?: number): Promis
     let envData = initEnvVariables(["port"]);
     const resolvedPort = Number(port || process.env.PORT || envData.port);
     port = Number.isFinite(resolvedPort) && resolvedPort > 0 ? resolvedPort : 9000;
-    app.use(cors());
-    app.use(express.json());
+    app.use(helmet());
+    app.use(cors({ origin: allowedOrigins(envData.allowed_origins), credentials: true }));
+    app.use(express.json({ limit: "1mb" }));
     app.use(trimBodyMiddleware());
     app.use(rateLimiter(60 * 1000, 100));
     mainRouter(app);

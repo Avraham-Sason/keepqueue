@@ -11,7 +11,7 @@ export const createAppointmentSchema = object({
     type: zenum(["VACATION", "HOLIDAY", "OTHER", "APPOINTMENT"]),
     serviceId: string().min(1).optional(),
     notes: string().max(2000).optional(),
-});
+}).refine((body) => body.end > body.start, { path: ["end"], message: "end must be after start" });
 
 export type CreateAppointmentModel = z.infer<typeof createAppointmentSchema>;
 
@@ -33,7 +33,7 @@ export const rescheduleAppointmentSchema = object({
     start: z.union([number().int().positive()]),
     end: z.union([number().int().positive()]),
     notes: string().max(2000).optional(),
-});
+}).refine((body) => body.end > body.start, { path: ["end"], message: "end must be after start" });
 
 export type RescheduleAppointmentModel = z.infer<typeof rescheduleAppointmentSchema>;
 

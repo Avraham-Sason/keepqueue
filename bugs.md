@@ -3,7 +3,7 @@
 **Date:** March 23–27, 2026 (8 sessions)
 **Version:** 1.0.5
 **Total bugs: 93** — Critical: 10 | High: 16 | Medium: 39 | Low: 28
-**Status: 3 fixed · 90 open** — fixed 2026-08-30: BUG-1, BUG-2, BUG-29 (client sent `eventId`, server Zod schema expects `calendarEventId`; verified with `npx tsc --noEmit` — no new type errors)
+**Status: 11 fixed · 82 open** — fixed 2026-08-30: BUG-1, BUG-2, BUG-29 · fixed 2026-08-31: BUG-36, BUG-52, BUG-59, BUG-66, BUG-67, BUG-71, BUG-79, BUG-92 (client sent `eventId`, server Zod schema expects `calendarEventId`; verified with `npx tsc --noEmit` — no new type errors)
 
 ---
 
@@ -491,7 +491,8 @@
 
 ---
 
-### BUG-36: CORS Allows All Origins in Production
+### BUG-36: CORS Allows All Origins in Production
+- **Status:** Fixed 2026-08-31 — CORS now allows only the configured origins (`allowed_origins` env, defaulting to keepqueue.com + localhost)
 - **Severity:** Critical (Security)
 - **Location:** `keepqueue-server/src/helpers/index.ts` line 38
 - **Steps to reproduce:**
@@ -714,7 +715,8 @@
 
 ---
 
-### BUG-52: No Validation That Appointment Start < End
+### BUG-52: No Validation That Appointment Start < End
+- **Status:** Fixed 2026-08-31 — `createAppointmentSchema` and `rescheduleAppointmentSchema` now `.refine()` that end > start
 - **Severity:** Medium
 - **Location:** `keepqueue-server/src/actions/businesses/appointments/schemes.ts` lines 5-14
 - **Description:** The `createAppointmentSchema` validates that `start` and `end` are positive integers, but does NOT validate that `start < end`. An API request with `start: 2000000000, end: 1000000000` (end before start) would pass validation. Also no check that `start` is in the future.
@@ -788,7 +790,8 @@
 
 ---
 
-### BUG-59: No helmet.js — Missing Security Headers
+### BUG-59: No helmet.js — Missing Security Headers
+- **Status:** Fixed 2026-08-31 — `helmet()` added ahead of every other middleware; JSON body capped at 1mb
 - **Severity:** Medium (Security)
 - **Location:** `keepqueue-server/src/helpers/index.ts`, `keepqueue-server/package.json`
 - **Description:** No `helmet` middleware or equivalent is installed. The server does not set security headers: Content-Security-Policy, X-Frame-Options, X-XSS-Protection, X-Content-Type-Options, Strict-Transport-Security, etc.
@@ -862,7 +865,8 @@
 
 ## Critical (Added in Session 5 — Zod Audit)
 
-### BUG-66: getCollectionSchema Accepts `value: any()` — Prototype Pollution Risk
+### BUG-66: getCollectionSchema Accepts `value: any()` — Prototype Pollution Risk
+- **Status:** Fixed 2026-08-31 — `fieldName` is matched against a strict identifier pattern and rejects `__proto__`/`constructor`/`prototype`; `value` is no longer `any()` but a primitive or a bounded array of primitives
 - **Severity:** Critical (Security)
 - **Location:** `keepqueue-server/src/data/schemes.ts` lines 5-15, `keepqueue-server/src/data/helpers.ts` lines 3-4
 - **Description:** The `getCollectionSchema` has two dangerous fields:
@@ -876,7 +880,8 @@
 
 ## Medium (Added in Session 5 — Zod Audit)
 
-### BUG-67: No Cross-Field Validation in Zod Schemas (end > start)
+### BUG-67: No Cross-Field Validation in Zod Schemas (end > start)
+- **Status:** Fixed 2026-08-31 — cross-field validation added to the appointment create and reschedule schemas
 - **Severity:** Medium
 - **Location:** Multiple schema files:
   - `appointments/schemes.ts` lines 8-9: `start` and `end` — no `end > start` validation
@@ -924,10 +929,11 @@
 
 ## Additional Bugs (from QA Sessions 6–8)
 
-### BUG-71: Hardcoded Real Credentials in Client-Side Source Code
+### BUG-71: Hardcoded Real Credentials in Client-Side Source Code
+- **Status:** Fixed 2026-08-31 — both `useState` defaults are now empty strings; the value is redacted from this file. It remains in git history — rotate it in Firebase
 - **Severity:** Critical (Security)
 - **Location:** `keepqueue-client/components/signin-form.tsx` lines 30–31
-- **Description:** Real Firebase password `Av!09890#` and account emails (`avi@biz.com`, `noa@customer.com`) are hardcoded as `useState` defaults. Shipped in every browser's JavaScript bundle — anyone can read them via DevTools → Sources.
+- **Description:** A real Firebase password and two account emails were hardcoded as `useState` defaults (redacted here; the value is in the git history and must be rotated in Firebase). Shipped in every browser's JavaScript bundle — anyone can read them via DevTools → Sources.
 - **Fix:** Replace with empty strings: `useState("")`
 - **Impact:** Account takeover — anyone can authenticate as business owner or customer with full data access
 
@@ -996,7 +1002,8 @@
 
 ---
 
-### BUG-79: `/data/getBusiness` Returns 200 with Error Body for Missing businessId
+### BUG-79: `/data/getBusiness` Returns 200 with Error Body for Missing businessId
+- **Status:** Fixed 2026-08-31 — `/data/getBusiness` returns HTTP 400 on a missing identifier instead of 200 with an error body
 - **Severity:** Medium
 - **Location:** `POST /data/getBusiness`
 - **Description:** Sending `{}` returns `200 OK` with `{"success":false,"error":"Business ID or owner ID is required"}`. Should return HTTP 400.
@@ -1113,7 +1120,8 @@
 
 ---
 
-### BUG-92: /test Debug Page Publicly Accessible
+### BUG-92: /test Debug Page Publicly Accessible
+- **Status:** Fixed 2026-08-31 — `app/test/page.tsx` deleted
 - **Severity:** Low
 - **Location:** `/test`
 - **Description:** Returns `v1.0.5 test` — debug page with no auth guard.

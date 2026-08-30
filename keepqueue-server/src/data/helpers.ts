@@ -15,6 +15,9 @@ export const checkCondition = (item: any, condition: NonNullable<GetCollectionMo
             }
             return fieldValue > value;
         case ">=":
+            if (typeof value !== "number" || typeof fieldValue !== "number") {
+                return false;
+            }
             return fieldValue >= value;
         case "<":
             if (typeof value !== "number" || typeof fieldValue !== "number") {
