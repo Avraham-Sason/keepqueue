@@ -17,10 +17,11 @@ export const isOverlap = (startA: Timestamp, endA: Timestamp, startB: Timestamp,
     return endA.toMillis() > startB.toMillis() && startA.toMillis() < endB.toMillis();
 };
 
-export const hasCalendarOverlapInCache = (businessId: string, start: Timestamp, end: Timestamp): boolean => {
-    const calendarEvents = cacheManager.get("calendar", []) 
+export const hasCalendarOverlapInCache = (businessId: string, start: Timestamp, end: Timestamp, excludeEventId?: string): boolean => {
+    const calendarEvents = cacheManager.get("calendar", []);
     return calendarEvents.some((event) => {
         if (event.businessId !== businessId) return false;
+        if (excludeEventId && event.id === excludeEventId) return false;
         if (["CANCELLED", "DONE", "NO_SHOW"].includes(event.status)) return false;
         return isOverlap(event.start, event.end, start, end);
     });
@@ -109,6 +110,9 @@ export const computeBusinessAvailability = (
     const nowMs = Date.now();
     const fromMs = fromTs ? fromTs.toMillis() : nowMs;
     const toMs = toTs ? toTs.toMillis() : nowMs + 90 * 24 * 60 * MINUTE_MS;
+    // The cursor below snaps to the start of the day, so today would otherwise offer slots that
+    // already ended. A caller asking for a future window keeps its own start.
+    const earliestMs = Math.max(fromMs, nowMs);
 
     // Iterate days in the BUSINESS timezone to avoid hour shifts (DST/UTC).
     let cursor = moment.tz(fromMs, tz).startOf("day");
@@ -125,7 +129,9 @@ export const computeBusinessAvailability = (
             for (const free of dailyFree) {
                 const remaining = subtractBusyFromInterval(free.start, free.end, busy);
                 for (const r of remaining) {
-                    availability.push({ start: makeTs(r.start), end: makeTs(r.end) });
+                    const start = Math.max(r.start, earliestMs);
+                    if (start >= r.end) continue;
+                    availability.push({ start: makeTs(start), end: makeTs(r.end) });
                 }
             }
         }

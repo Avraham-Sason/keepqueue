@@ -3,7 +3,7 @@
 **Date:** March 23–27, 2026 (8 sessions)
 **Version:** 1.0.5
 **Total bugs: 93** — Critical: 10 | High: 16 | Medium: 39 | Low: 28
-**Status: 11 fixed · 82 open** — fixed 2026-08-30: BUG-1, BUG-2, BUG-29 · fixed 2026-08-31: BUG-36, BUG-52, BUG-59, BUG-66, BUG-67, BUG-71, BUG-79, BUG-92 (client sent `eventId`, server Zod schema expects `calendarEventId`; verified with `npx tsc --noEmit` — no new type errors)
+**Status: 20 fixed · 73 open** — fixed 2026-08-30: BUG-1, BUG-2, BUG-29 · fixed 2026-08-31: BUG-3, BUG-4, BUG-6, BUG-21, BUG-36, BUG-39, BUG-40, BUG-45, BUG-48, BUG-52, BUG-59, BUG-66, BUG-67, BUG-71, BUG-79, BUG-86, BUG-92 (client sent `eventId`, server Zod schema expects `calendarEventId`; verified with `npx tsc --noEmit` — no new type errors)
 
 ---
 
@@ -39,7 +39,8 @@
 
 ---
 
-### BUG-3: Direct URL Navigation Loses Session
+### BUG-3: Direct URL Navigation Loses Session
+- **Status:** Fixed 2026-08-31 — `onAuthStateChanged` now syncs Firebase auth into the persisted store, and `apiCall` waits for that restore before reading the token
 - **Severity:** Critical
 - **Location:** Auth/session persistence layer
 - **Steps to reproduce:**
@@ -55,7 +56,8 @@
 
 ## High Severity
 
-### BUG-4: Language Toggle Causes Session Loss
+### BUG-4: Language Toggle Causes Session Loss
+- **Status:** Fixed 2026-08-31 — same root cause as BUG-3 — a reload no longer drops the session now that Firebase auth is the source of truth
 - **Severity:** High
 - **Location:** Language switching mechanism
 - **Steps to reproduce:**
@@ -81,7 +83,8 @@
 
 ---
 
-### BUG-6: Analytics Shows 0 Data Despite Existing Appointments
+### BUG-6: Analytics Shows 0 Data Despite Existing Appointments
+- **Status:** Fixed 2026-08-31 — analytics filtered on `created`; it now filters on `start`, bounded by now — see BUG-40
 - **Severity:** High
 - **Location:** Analytics page data filtering/aggregation logic
 - **Steps to reproduce:**
@@ -282,7 +285,8 @@
 
 ## High (Added in Session 2)
 
-### BUG-21: Past Time Slots Bookable for Today
+### BUG-21: Past Time Slots Bookable for Today
+- **Status:** Fixed 2026-08-31 — `computeBusinessAvailability` clamps every produced interval to no earlier than now, so today's elapsed slots are not offered
 - **Severity:** High
 - **Location:** `keepqueue-client/components/BookingInterface/` — date/time step
 - **Steps to reproduce:**
@@ -548,7 +552,8 @@
 
 ---
 
-### BUG-39: No onAuthStateChanged Listener — Root Cause of BUG-3 and BUG-4
+### BUG-39: No onAuthStateChanged Listener — Root Cause of BUG-3 and BUG-4
+- **Status:** Fixed 2026-08-31 — added the missing `onAuthStateChanged` listener; a signed-out Firebase session now clears the persisted store
 - **Severity:** Medium (Architecture)
 - **Location:** `keepqueue-client/lib/store/authStore.ts`, `keepqueue-client/lib/firebase/connect.ts`
 - **Description:** The app has **no `onAuthStateChanged()` listener** from Firebase. Auth state is stored in Zustand (persisted to localStorage), but never revalidated against Firebase's actual session state.
@@ -558,7 +563,8 @@
 
 ---
 
-### BUG-40: Analytics Filters by Created Date Instead of Start Date (BUG-6 Root Cause)
+### BUG-40: Analytics Filters by Created Date Instead of Start Date (BUG-6 Root Cause)
+- **Status:** Fixed 2026-08-31 — the analytics window filters by appointment `start` within [periodStart, now] instead of by `created`
 - **Severity:** Medium
 - **Location:** `keepqueue-server/src/data/services.ts` line 317
 - **Description:** Server-side analytics filters appointments by `e.created.toMillis() >= periodStart` (when appointment was booked) instead of `e.start.toMillis() >= periodStart` (when appointment is scheduled).
@@ -625,7 +631,8 @@
 
 ---
 
-### BUG-45: Reschedule Detects Own Appointment as Overlap Conflict
+### BUG-45: Reschedule Detects Own Appointment as Overlap Conflict
+- **Status:** Fixed 2026-08-31 — `hasCalendarOverlapInCache` takes an `excludeEventId`; reschedule passes its own id so an appointment no longer collides with itself
 - **Severity:** High
 - **Location:** `keepqueue-server/src/actions/businesses/appointments/services.ts` line 103
 - **Description:** When rescheduling appointment A, `hasCalendarOverlapInCache()` checks ALL events in cache including A itself (which still has its old time). If rescheduling to the same or overlapping time slot, the function returns "Slot already booked" — a false positive.
@@ -663,7 +670,8 @@
 
 ---
 
-### BUG-48: No 401 Handling — Expired Tokens Cause Generic Errors
+### BUG-48: No 401 Handling — Expired Tokens Cause Generic Errors
+- **Status:** Fixed 2026-08-31 — `apiCall` retries once with a force-refreshed ID token on a 401 before surfacing the error
 - **Severity:** High
 - **Location:** `keepqueue-client/lib/helpers/api.ts` lines 67-82
 - **Description:** The API client does not handle 401 Unauthorized responses specifically. When a Firebase token expires mid-session:
@@ -1070,7 +1078,8 @@
 
 ---
 
-### BUG-86: `/actions/login` Returns 500 on Invalid/Empty Request Body
+### BUG-86: `/actions/login` Returns 500 on Invalid/Empty Request Body
+- **Status:** Fixed 2026-08-31 — `verifyToken` throws on a missing or malformed header, so the handler mapped it to 500; login now answers 401
 - **Severity:** High
 - **Location:** `POST /actions/login`
 - **Description:** Sending `{}` or `{"idToken": "fake"}` returns `500 Internal Server Error` instead of `400 Bad Request`. No Zod `validateBody` middleware on this route.

@@ -313,9 +313,11 @@ export const S_getBusinessAnalytics: RouterService = async (req, res, next) => {
         const now = Date.now();
         const periodStart = now - periodDays * 24 * 60 * 60 * 1000;
 
-        const businessEvents = allCalendar.filter(
-            (e) => e.businessId === businessId && e.type === "APPOINTMENT" && e.created.toMillis() >= periodStart
-        );
+        const businessEvents = allCalendar.filter((e) => {
+            if (e.businessId !== businessId || e.type !== "APPOINTMENT") return false;
+            const startedAt = e.start.toMillis();
+            return startedAt >= periodStart && startedAt <= now;
+        });
 
         const totalBookings = businessEvents.length;
         const noShows = businessEvents.filter((e) => e.status === "NO_SHOW").length;

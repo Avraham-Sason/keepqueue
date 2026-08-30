@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { Business, BusinessWithRelations, type User } from "../types";
 import { createSelectors } from "./utils";
-import { signInWithEmailAndPassword, signOut } from "firebase/auth";
+import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { auth } from "../firebase/connect";
 import { getAllDocuments, queryDocument } from "../firebase";
 import { useBusinessesStoreBase } from "./businesses";
@@ -59,5 +59,26 @@ export const useAuthStoreBase = create<AuthState>()(
         }
     )
 );
+
+const clearSession = () => {
+    useBusinessesStoreBase.setState({ currentBusiness: null });
+    useAuthStoreBase.setState({ user: null, isAuthenticated: false, isBusinessOwner: false });
+};
+
+if (typeof window !== "undefined") {
+    onAuthStateChanged(auth, async (firebaseUser) => {
+        if (!firebaseUser) {
+            if (useAuthStoreBase.getState().isAuthenticated) clearSession();
+            return;
+        }
+        if (useAuthStoreBase.getState().user?.email === firebaseUser.email) return;
+        const foundUser = (await queryDocument("users", "email", "==", firebaseUser.email)) as User | null;
+        if (!foundUser) {
+            clearSession();
+            return;
+        }
+        useAuthStoreBase.setState({ user: foundUser, isAuthenticated: true, isBusinessOwner: foundUser.type === "business" });
+    });
+}
 
 export const useAuthStore = createSelectors<AuthState>(useAuthStoreBase);

@@ -1,5 +1,5 @@
 import axios from "axios";
-import { auth } from "../firebase";
+import { auth, waitForFirebaseAuth } from "../firebase";
 import { StringObject } from "../types";
 import { isLocal } from "./utils";
 
@@ -44,18 +44,27 @@ export const apiCall = async <T = any>(
     data?: StringObject,
     config?: { signal?: AbortSignal }
 ): Promise<T | null> => {
-    try {
-        const token = await auth.currentUser?.getIdToken();
-        const headers = {
-            authorization: token ? "bearer " + token : undefined,
-        };
-        const response = await axios({
-            headers,
+    const send = async (forceRefreshToken: boolean) => {
+        const token = await auth.currentUser?.getIdToken(forceRefreshToken);
+        return axios({
+            headers: { authorization: token ? "bearer " + token : undefined },
             method,
             url: `${serverUrl}/${endpoint}/${url}`,
             data,
             signal: config?.signal,
         });
+    };
+
+    try {
+        await waitForFirebaseAuth();
+        let response;
+        try {
+            response = await send(false);
+        } catch (requestError: any) {
+            const isExpiredToken = axios.isAxiosError(requestError) && requestError.response?.status === 401 && !!auth.currentUser;
+            if (!isExpiredToken) throw requestError;
+            response = await send(true);
+        }
         const payload = response.data as ApiResponse<T>;
         if (!payload?.success) {
             throw new ApiError(extractErrorMessage(payload?.error) ?? "Server responded with an error", {

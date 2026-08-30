@@ -6,9 +6,13 @@ import { logger } from "../managers";
 
 export const SLogin: RouterService = async (req, res, next) => {
     try {
-        const decoded = await verifyToken(req.headers.authorization);
-        if (!decoded) {
-            res.status(401).json(jsonFailed("Invalid token"));
+        // verifyToken throws on a missing or malformed header rather than returning null, so
+        // without this the global handler turned a client error into a 500.
+        let decoded;
+        try {
+            decoded = await verifyToken(req.headers.authorization);
+        } catch {
+            res.status(401).json(jsonFailed("Invalid or missing authorization token"));
             return;
         }
 

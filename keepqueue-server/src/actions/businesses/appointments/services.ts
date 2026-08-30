@@ -100,7 +100,7 @@ export const SRescheduleAppointment: RouterService = async (req, res, next) => {
             if (data.status === "CANCELLED") throw new Error("Cannot reschedule a cancelled appointment");
             if (data.status === "DONE") throw new Error("Cannot reschedule a completed appointment");
 
-            const hasOverlap = hasCalendarOverlapInCache(data.businessId, startTs, endTs);
+            const hasOverlap = hasCalendarOverlapInCache(data.businessId, startTs, endTs, calendarEventId);
             if (hasOverlap) {
                 res.json(jsonFailed("Slot already booked"));
                 return;
