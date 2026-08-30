@@ -32,10 +32,20 @@ export const initEnvVariables = (requiredVars: string[] = []) => {
 
 const DEFAULT_ORIGINS = ["https://keepqueue.com", "https://www.keepqueue.com", "http://localhost:3000", "http://localhost:3001"];
 
+const VERCEL_PREVIEW = /^https:\/\/keepqueue-[a-z0-9-]+\.vercel\.app$/;
+
 export const allowedOrigins = (configured?: string): string[] =>
     configured
         ? configured.split(",").map((origin) => origin.trim()).filter(Boolean)
         : DEFAULT_ORIGINS;
+
+export const isAllowedOrigin = (origin: string | undefined, allowed: string[]): boolean =>
+    !origin || allowed.includes(origin) || VERCEL_PREVIEW.test(origin);
+
+export const corsOriginCheck =
+    (allowed: string[]) =>
+    (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) =>
+        isAllowedOrigin(origin, allowed) ? callback(null, true) : callback(new Error("Origin not allowed"));
 
 export const startServer = async (mainRouter: MainRouter, port?: number): Promise<Express> => {
     const app: Express = express();
@@ -44,8 +54,8 @@ export const startServer = async (mainRouter: MainRouter, port?: number): Promis
     let envData = initEnvVariables(["port"]);
     const resolvedPort = Number(port || process.env.PORT || envData.port);
     port = Number.isFinite(resolvedPort) && resolvedPort > 0 ? resolvedPort : 9000;
-    app.use(helmet());
-    app.use(cors({ origin: allowedOrigins(envData.allowed_origins), credentials: true }));
+    app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
+    app.use(cors({ origin: corsOriginCheck(allowedOrigins(envData.allowed_origins)), credentials: true }));
     app.use(express.json({ limit: "1mb" }));
     app.use(trimBodyMiddleware());
     app.use(rateLimiter(60 * 1000, 100));
