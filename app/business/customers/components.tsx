@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Calendar, Clock, User, Ban, CheckCircle2, XCircle, Eye, Mail, Phone } from "lucide-react";
+import { Calendar, Clock, User, Ban, CheckCircle2, XCircle, Eye, Mail, Phone, AlertTriangle } from "lucide-react";
 import { motion } from "framer-motion";
 import type { Customer, CalendarEventWithRelations } from "@/lib/types";
 import { useLanguage } from "@/hooks";
@@ -19,11 +19,13 @@ interface CustomerCardProps {
     businessId: string;
     isBlocked: boolean;
     appointmentCount: number;
+    noShowCount?: number;
+    cancelCount?: number;
     onViewAppointments: (customerId: string) => void;
     onBlock: (customerId: string) => void;
 }
 
-export function CustomerCard({ customer, index, businessId, isBlocked, appointmentCount, onViewAppointments, onBlock }: CustomerCardProps) {
+export function CustomerCard({ customer, index, businessId, isBlocked, appointmentCount, noShowCount = 0, cancelCount = 0, onViewAppointments, onBlock }: CustomerCardProps) {
     const { t } = useLanguage();
     const customerName = formatCustomerName(customer);
     const initials = getCustomerInitials(customer);
@@ -77,6 +79,21 @@ export function CustomerCard({ customer, index, businessId, isBlocked, appointme
                             <span className="text-muted-foreground">{t("appointments")}:</span>
                             <span className="font-medium">{appointmentCount}</span>
                         </div>
+                        {(noShowCount > 0 || cancelCount > 0) && (
+                            <div className="flex items-center gap-2 text-sm">
+                                <AlertTriangle className="h-4 w-4 text-amber-500" />
+                                {noShowCount > 0 && (
+                                    <Badge variant="outline" className="text-amber-600 border-amber-300">
+                                        {t("customerNoShowCount")}: {noShowCount}
+                                    </Badge>
+                                )}
+                                {cancelCount > 0 && appointmentCount > 0 && (
+                                    <Badge variant="outline" className="text-amber-600 border-amber-300">
+                                        {t("customerCancelRate")}: {Math.round((cancelCount / appointmentCount) * 100)}%
+                                    </Badge>
+                                )}
+                            </div>
+                        )}
                         {customer.lastEventAt && (
                             <div className="flex items-center gap-2 text-sm">
                                 <Clock className="h-4 w-4 text-muted-foreground" />

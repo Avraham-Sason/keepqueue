@@ -43,6 +43,14 @@ function Customers() {
         return calendar.filter((event) => event.userId === customerId).length;
     };
 
+    const getCustomerNoShowCount = (customerId: string) => {
+        return calendar.filter((event) => event.userId === customerId && event.status === "NO_SHOW").length;
+    };
+
+    const getCustomerCancelCount = (customerId: string) => {
+        return calendar.filter((event) => event.userId === customerId && event.status === "CANCELLED").length;
+    };
+
     const isCustomerBlocked = (customer: Customer) => {
         return customer.blockedByBusinessIds?.includes(businessId || "") || false;
     };
@@ -84,6 +92,8 @@ function Customers() {
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     {customers.map((customer, index) => {
                         const appointmentCount = getCustomerAppointmentCount(customer.id!);
+                        const noShowCount = getCustomerNoShowCount(customer.id!);
+                        const cancelCount = getCustomerCancelCount(customer.id!);
                         const isBlocked = isCustomerBlocked(customer);
                         return (
                             <CustomerCard
@@ -93,6 +103,8 @@ function Customers() {
                                 businessId={businessId}
                                 isBlocked={isBlocked}
                                 appointmentCount={appointmentCount}
+                                noShowCount={noShowCount}
+                                cancelCount={cancelCount}
                                 onViewAppointments={openAppointmentsDialog}
                                 onBlock={openBlockDialog}
                             />

@@ -1,6 +1,6 @@
 "use client";
 
-import { Calendar, Home, Users, Settings, BarChart3, Clock, Star, LogOut, Edit } from "lucide-react";
+import { Calendar, Home, Users, Users2, Settings, BarChart3, Clock, Star, LogOut, Edit } from "lucide-react";
 import {
     Sidebar,
     SidebarContent,
@@ -59,6 +59,11 @@ const menuItems = [
         title: "services",
         url: "/business/services",
         icon: Settings,
+    },
+    {
+        title: "staff",
+        url: "/business/staff",
+        icon: Users2,
     },
     {
         title: "analytics",

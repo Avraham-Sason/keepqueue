@@ -123,6 +123,12 @@ export function SignInForm({ type, disableRedirect = false, onSuccess }: SignInF
                         </div>
                     </div>
 
+                    <div className="flex justify-end">
+                        <a href="/auth/reset-password" className="text-sm text-primary hover:underline">
+                            {t("forgotPassword")}
+                        </a>
+                    </div>
+
                     <Button type="submit" className="w-full" disabled={isLoading}>
                         {isLoading ? (
                             <>
@@ -138,7 +144,7 @@ export function SignInForm({ type, disableRedirect = false, onSuccess }: SignInF
                 <div className="mt-4 text-center text-sm">
                     <p className="text-muted-foreground">
                         {t("noAccount")}{" "}
-                        <a href="/business/auth/signup" className="text-primary hover:underline">
+                        <a href={`/auth/signup/${type}`} className="text-primary hover:underline">
                             {t("signUpHere")}
                         </a>
                     </p>
