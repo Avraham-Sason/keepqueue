@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import type { CalendarEventWithRelations } from "@/lib/types/business";
 import type { Service } from "@/lib/types";
 
-type Period = "7" | "30" | "90";
+export type Period = "7" | "30" | "90";
 
 export function useAnalytics(calendar: CalendarEventWithRelations[], services: Service[]) {
     const [period, setPeriod] = useState<Period>("30");

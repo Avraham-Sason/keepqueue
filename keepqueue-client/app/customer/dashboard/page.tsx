@@ -143,7 +143,7 @@ export default function CustomerDashboardPage() {
                                         <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
                                             <Clock className="h-3 w-3" />
                                             <span>
-                                                {timestampToString(apt.start, timezone, "DD/MM/YYYY HH:mm")}
+                                                {timestampToString(apt.start, { tz: timezone, format: "DD/MM/YYYY HH:mm" })}
                                             </span>
                                             <Badge variant={statusVariant[apt.status as CalendarEventStatus]}>
                                                 {t(`status${apt.status}`)}
@@ -184,7 +184,7 @@ export default function CustomerDashboardPage() {
                                         <p className="font-medium">{apt.title}</p>
                                         <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
                                             <Clock className="h-3 w-3" />
-                                            <span>{timestampToString(apt.start, timezone, "DD/MM/YYYY HH:mm")}</span>
+                                            <span>{timestampToString(apt.start, { tz: timezone, format: "DD/MM/YYYY HH:mm" })}</span>
                                             <Badge variant={statusVariant[apt.status as CalendarEventStatus]}>
                                                 {t(`status${apt.status}`)}
                                             </Badge>

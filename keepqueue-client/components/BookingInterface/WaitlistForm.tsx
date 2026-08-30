@@ -58,9 +58,9 @@ export function WaitlistForm({ businessId, userId, service, existingWaitItem, on
         setIsLoading(true);
         try {
             const items = await queryDocumentsByConditions("waitlist", [
-                { field: "userId", operator: "==", value: userId },
-                { field: "serviceId", operator: "==", value: service.id },
-                { field: "businessId", operator: "==", value: businessId },
+                { field_name: "userId", operator: "==", value: userId },
+                { field_name: "serviceId", operator: "==", value: service.id },
+                { field_name: "businessId", operator: "==", value: businessId },
             ]);
 
             if (items && items.length > 0) {

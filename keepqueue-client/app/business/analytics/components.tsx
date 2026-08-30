@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { CalendarDays, UserX, XCircle, DollarSign, TrendingUp } from "lucide-react";
 import { motion } from "framer-motion";
 import { useLanguage } from "@/hooks";
+import type { Period } from "./hooks";
 
 interface KpiCardProps {
     title: string;
@@ -35,14 +36,14 @@ export function KpiCard({ title, value, icon, index, subtitle }: KpiCardProps) {
 }
 
 interface PeriodSelectorProps {
-    period: string;
-    setPeriod: (val: string) => void;
+    period: Period;
+    setPeriod: (val: Period) => void;
 }
 
 export function PeriodSelector({ period, setPeriod }: PeriodSelectorProps) {
     const { t } = useLanguage();
     return (
-        <Select value={period} onValueChange={setPeriod}>
+        <Select value={period} onValueChange={(val) => setPeriod(val as Period)}>
             <SelectTrigger className="w-[180px]">
                 <SelectValue />
             </SelectTrigger>
