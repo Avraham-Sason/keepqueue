@@ -1,4 +1,4 @@
-import { Audit, Business, CalendarEvent, MessageTemplate, NotificationLog, Review, Service, StringObject, User, WaitItem } from "../types";
+import { Audit, Business, CalendarEvent, MessageTemplate, NotificationLog, Review, Service, StaffMember, StringObject, User, WaitItem } from "../types";
 
 interface SetOptions {
     merge?: boolean;
@@ -125,4 +125,6 @@ export interface CacheStore {
     notificationLogsMap: Map<string, NotificationLog>;
     audits: Audit[];
     auditsMap: Map<string, Audit>;
+    staff: StaffMember[];
+    staffMap: Map<string, StaffMember>;
 }

@@ -185,8 +185,8 @@ export interface StaffMember extends DocBase {
 export interface Audit extends DocBase {
     businessId: ID;
     userId: ID;
-    entity: "services" | "businesses" | "calendar";
-    action: "create" | "update" | "delete";
+    entity: "services" | "businesses" | "calendar" | "staff" | "customers" | "waitlist" | "reviews";
+    action: "create" | "update" | "delete" | "block" | "unblock" | "moderate";
     subEntity: string;
 }
 

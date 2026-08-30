@@ -39,3 +39,6 @@ export const validateBody =
         req.body = parseResult.data as T;
         return next();
     };
+
+export { authGuard } from "./authGuard";
+export { rateLimiter } from "./rateLimiter";

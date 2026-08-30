@@ -1,5 +1,5 @@
 import { cacheManager, CacheStore, logger } from "../managers";
-import { Audit, Business, CalendarEvent, DocBase, MessageTemplate, NotificationLog, Review, Service, User, WaitItem } from "../types";
+import { Audit, Business, CalendarEvent, DocBase, MessageTemplate, NotificationLog, Review, Service, StaffMember, User, WaitItem } from "../types";
 import { snapshotBulk } from "./helpers";
 import { OnSnapshotConfig } from "./types";
 
@@ -14,6 +14,7 @@ export const initSnapshot = async () => {
         parseDocuments<WaitItem>("waitlist"),
         parseDocuments<Review>("reviews"),
         parseDocuments<Audit>("audits"),
+        parseDocuments<StaffMember>("staff"),
     ];
     await snapshotBulk(config);
 };

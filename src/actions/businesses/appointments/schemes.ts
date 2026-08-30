@@ -27,3 +27,20 @@ export const cancelAppointmentSchema = object({
 });
 
 export type CancelAppointmentModel = z.infer<typeof cancelAppointmentSchema>;
+
+export const rescheduleAppointmentSchema = object({
+    calendarEventId: string().min(1),
+    start: z.union([number().int().positive()]),
+    end: z.union([number().int().positive()]),
+    notes: string().max(2000).optional(),
+});
+
+export type RescheduleAppointmentModel = z.infer<typeof rescheduleAppointmentSchema>;
+
+export const updateAppointmentStatusSchema = object({
+    calendarEventId: string().min(1),
+    status: zenum(["NO_SHOW", "DONE"]),
+    notes: string().max(2000).optional(),
+});
+
+export type UpdateAppointmentStatusModel = z.infer<typeof updateAppointmentStatusSchema>;

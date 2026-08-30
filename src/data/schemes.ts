@@ -40,3 +40,44 @@ export const getUserByIdSchema = object({
 });
 
 export type GetUserByIdModel = z.infer<typeof getUserByIdSchema>;
+
+export const getBusinessStaffSchema = object({
+    businessId: string().min(1),
+});
+
+export type GetBusinessStaffModel = z.infer<typeof getBusinessStaffSchema>;
+
+export const getBusinessWaitlistSchema = object({
+    businessId: string().min(1),
+});
+
+export type GetBusinessWaitlistModel = z.infer<typeof getBusinessWaitlistSchema>;
+
+export const getBusinessReviewsSchema = object({
+    businessId: string().min(1),
+});
+
+export type GetBusinessReviewsModel = z.infer<typeof getBusinessReviewsSchema>;
+
+export const getBusinessRatingsSchema = object({
+    businessId: string().min(1),
+});
+
+export type GetBusinessRatingsModel = z.infer<typeof getBusinessRatingsSchema>;
+
+export const getBusinessAppointmentsSchema = object({
+    businessId: string().min(1),
+    fromDate: z.number().int().positive().optional(),
+    toDate: z.number().int().positive().optional(),
+    status: z.enum(["BOOKED", "CONFIRMED", "CANCELLED", "NO_SHOW", "DONE"]).optional(),
+    serviceId: string().optional(),
+});
+
+export type GetBusinessAppointmentsModel = z.infer<typeof getBusinessAppointmentsSchema>;
+
+export const getBusinessAnalyticsSchema = object({
+    businessId: string().min(1),
+    periodDays: z.number().int().min(1).max(365).optional(),
+});
+
+export type GetBusinessAnalyticsModel = z.infer<typeof getBusinessAnalyticsSchema>;

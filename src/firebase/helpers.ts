@@ -12,7 +12,6 @@ import {
 } from "./types";
 import { logger } from "../managers";
 import { DecodedIdToken } from "firebase-admin/auth";
-import { initEnvVariables } from "../helpers";
 import { StringObject } from "../types";
 import dotenv from "dotenv";
 import { Timestamp } from "firebase-admin/firestore";
@@ -31,7 +30,15 @@ const requiredEnvVars = [
     "client_x509_cert_url",
     "universe_domain",
 ];
-const envData = initEnvVariables(requiredEnvVars);
+const envData: StringObject<string> = {};
+requiredEnvVars.forEach((varName) => {
+    const envVal = process.env[varName];
+    if (!envVal) {
+        console.error(`--- Error: Missing mandatory environment variable: ${varName}. ---`);
+        process.exit(1);
+    }
+    envData[varName] = envVal;
+});
 export const serviceAccountFirebase = {
     type: envData.type,
     project_id: envData.project_id,

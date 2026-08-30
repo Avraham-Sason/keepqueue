@@ -1,8 +1,7 @@
 import express, { Express } from "express";
 import cors from "cors";
 import { logger } from "../managers";
-import { errorHandler } from "../middlewares";
-import { trimBodyMiddleware } from "../middlewares";
+import { errorHandler, trimBodyMiddleware, rateLimiter } from "../middlewares";
 import { MainRouter, StringObject } from "../types";
 import { readFileSync } from "fs";
 import packageJson from "../../package.json";
@@ -39,6 +38,7 @@ export const startServer = async (mainRouter: MainRouter, port?: number): Promis
     app.use(cors());
     app.use(express.json());
     app.use(trimBodyMiddleware());
+    app.use(rateLimiter(60 * 1000, 100));
     mainRouter(app);
     app.use(errorHandler);
 
@@ -77,32 +77,7 @@ export const trimStrings = <T>(input: any): any => {
     return input;
 };
 
-export const parseError = (error: any) => {
-    return error instanceof Error ? { name: error.name, message: error.message } : error;
-};
-
-export const safeStringify = (value: any): string => {
-    const seen = new WeakSet<object>();
-    try {
-        return JSON.stringify(
-            value,
-            (key, val) => {
-                if (typeof val === "object" && val !== null) {
-                    if (seen.has(val)) {
-                        return "[Circular]";
-                    }
-                    seen.add(val);
-                }
-                if (val instanceof Error) {
-                    return { name: val.name, message: val.message, stack: val.stack };
-                }
-                return val;
-            }
-        );
-    } catch {
-        return String(value);
-    }
-};
+export { parseError, safeStringify } from "../utils";
 
 export const getVersion = (packageJsonPath: string): string => {
     const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8"));

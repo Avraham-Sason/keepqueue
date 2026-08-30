@@ -1,7 +1,7 @@
 import moment_timezone from "moment-timezone";
 import axios from "axios";
 import { isObject } from "lodash";
-import { parseError, safeStringify } from "../helpers";
+import { parseError, safeStringify } from "../utils";
 import { StringObject } from "../types";
 
 class LoggerManager {

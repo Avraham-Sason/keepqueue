@@ -3,7 +3,7 @@ import { CalendarEvent, RouterService } from "../../../types";
 import { db, firebaseTimestamp } from "../../../firebase";
 import { Timestamp, FieldValue } from "firebase-admin/firestore";
 import { getServiceById, hasCalendarOverlapInCache, parseTs } from "./helpers";
-import { CreateAppointmentModel } from "./schemes";
+import { CreateAppointmentModel, RescheduleAppointmentModel, UpdateAppointmentStatusModel } from "./schemes";
 
 export const SCreateAppointment: RouterService = async (req, res, next) => {
     try {
@@ -81,6 +81,67 @@ export const SCancelAppointment: RouterService = async (req, res, next) => {
             tx.update(calendarRef, { status: "CANCELLED", notes: reason || data.notes, timestamp: firebaseTimestamp() });
         });
         res.json(jsonOK({ calendarEventId }));
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const SRescheduleAppointment: RouterService = async (req, res, next) => {
+    try {
+        const { calendarEventId, start, end, notes } = req.body as RescheduleAppointmentModel;
+        const startTs = parseTs(start);
+        const endTs = parseTs(end);
+
+        const calendarRef = db.collection("calendar").doc(calendarEventId);
+        await db.runTransaction(async (tx) => {
+            const snap = await tx.get(calendarRef);
+            if (!snap.exists) throw new Error("Appointment not found");
+            const data: any = snap.data();
+            if (data.status === "CANCELLED") throw new Error("Cannot reschedule a cancelled appointment");
+            if (data.status === "DONE") throw new Error("Cannot reschedule a completed appointment");
+
+            const hasOverlap = hasCalendarOverlapInCache(data.businessId, startTs, endTs);
+            if (hasOverlap) {
+                res.json(jsonFailed("Slot already booked"));
+                return;
+            }
+
+            const updateData: any = {
+                start: startTs,
+                end: endTs,
+                timestamp: firebaseTimestamp(),
+            };
+            if (notes !== undefined) updateData.notes = notes;
+
+            tx.update(calendarRef, updateData);
+        });
+
+        res.json(jsonOK({ calendarEventId }));
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const SUpdateAppointmentStatus: RouterService = async (req, res, next) => {
+    try {
+        const { calendarEventId, status, notes } = req.body as UpdateAppointmentStatusModel;
+        const calendarRef = db.collection("calendar").doc(calendarEventId);
+        await db.runTransaction(async (tx) => {
+            const snap = await tx.get(calendarRef);
+            if (!snap.exists) throw new Error("Appointment not found");
+            const data: any = snap.data();
+            if (data.status === "CANCELLED") throw new Error("Cannot update status of a cancelled appointment");
+
+            const updateData: any = {
+                status,
+                timestamp: firebaseTimestamp(),
+            };
+            if (notes !== undefined) updateData.notes = notes;
+
+            tx.update(calendarRef, updateData);
+        });
+
+        res.json(jsonOK({ calendarEventId, status }));
     } catch (error) {
         next(error);
     }
