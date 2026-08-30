@@ -3,7 +3,7 @@
 **Date:** March 23–27, 2026 (8 sessions)
 **Version:** 1.0.5
 **Total bugs: 93** — Critical: 10 | High: 16 | Medium: 39 | Low: 28
-**Status: 24 fixed · 69 open** — fixed 2026-08-30: BUG-1, BUG-2, BUG-29 · fixed 2026-08-31: BUG-3, BUG-4, BUG-6, BUG-21, BUG-36, BUG-39, BUG-40, BUG-45, BUG-48, BUG-52, BUG-59, BUG-66, BUG-67, BUG-71, BUG-79, BUG-86, BUG-92 (client sent `eventId`, server Zod schema expects `calendarEventId`; verified with `npx tsc --noEmit` — no new type errors)
+**Status: 27 fixed · 66 open** — fixed 2026-08-30: BUG-1, BUG-2, BUG-29 · fixed 2026-08-31: BUG-3, BUG-4, BUG-6, BUG-21, BUG-36, BUG-39, BUG-40, BUG-45, BUG-48, BUG-52, BUG-59, BUG-66, BUG-67, BUG-71, BUG-79, BUG-86, BUG-92 (client sent `eventId`, server Zod schema expects `calendarEventId`; verified with `npx tsc --noEmit` — no new type errors)
 
 ---
 
@@ -98,7 +98,8 @@
 
 ---
 
-### BUG-7: Mark No-Show / Mark Done Bypass Server API
+### BUG-7: Mark No-Show / Mark Done Bypass Server API
+- **Status:** Fixed 2026-08-31 — no-show and done now POST to `/actions/businesses/appointments/updateStatus`, which authGuard and the ownership check both cover, instead of writing to Firestore from the browser
 - **Severity:** High
 - **Location:** `keepqueue-client/app/business/appointments/hooks.tsx`
 - **Steps to reproduce:**
@@ -646,7 +647,8 @@
 
 ---
 
-### BUG-46: No File Size Validation on Logo Upload — Firestore 1MB Limit Risk
+### BUG-46: No File Size Validation on Logo Upload — Firestore 1MB Limit Risk
+- **Status:** Fixed 2026-08-31 — `uploadFileToStorage` rejects anything over 5MB before it reaches Storage, with a typed `FileTooLargeError`
 - **Severity:** High
 - **Location:** `keepqueue-client/app/business/editDetails/hooks.tsx` lines 271-294
 - **Description:** Logo upload uses `FileReader.readAsDataURL()` to convert image to base64 string, then stores it directly in the Firestore `businesses` document as `logoUrl`. No file size limit, no MIME type server-side validation, no compression. Firestore max document size is 1MB — a large image will exceed this and cause a silent write failure.
@@ -951,7 +953,8 @@
 
 ---
 
-### BUG-72: Landing Page CTA Buttons Are Dead `<div>` Elements
+### BUG-72: Landing Page CTA Buttons Are Dead `<div>` Elements
+- **Status:** Fixed 2026-08-31 — both buttons rendered a bare `<div>` with the intended `<Link>` commented out. Register-a-business is wired to `/auth/signup/business`; search-businesses is disabled rather than pointed at `/customer/marketplace`, which does not exist (BUG-14)
 - **Severity:** High
 - **Location:** `app/landing-page/static-components.tsx` lines 121–136
 - **Description:** "Register New Business" and "Search Businesses" hero CTA buttons are `<div>` elements — the `<Link>` tags are commented out.

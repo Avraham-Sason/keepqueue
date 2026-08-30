@@ -118,8 +118,7 @@ export function SigninForms() {
                         <Link href="/auth/signin/business">{t("businessLogin")}</Link>
                     </Button>
                     <Button variant="outline" size="sm" className="w-full mt-2 bg-transparent" asChild>
-                        {/* <Link href="/business/auth/signup">{t("registerNewBusiness")}</Link> */}
-                        <div>{t("registerNewBusiness")}</div>
+                        <Link href="/auth/signup/business">{t("registerNewBusiness")}</Link>
                     </Button>
                 </Card>
 
@@ -131,9 +130,8 @@ export function SigninForms() {
                     <Button size="lg" className="w-full" asChild>
                         <Link href="/auth/signin/customer">{t("customerLogin")}</Link>
                     </Button>
-                    <Button variant="outline" size="sm" className="w-full bg-transparent mt-2 " asChild>
-                        {/* <Link href="/customer/marketplace">{t("searchBusinesses")}</Link> */}
-                        <div>{t("searchBusinesses")}</div>
+                    <Button variant="outline" size="sm" className="w-full bg-transparent mt-2" disabled>
+                        {t("searchBusinesses")}
                     </Button>
                 </Card>
             </div>

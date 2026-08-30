@@ -12,7 +12,19 @@ export const getFileUrlFromStorage = async (filePath: string): Promise<string> =
     }
 };
 
+export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
+
+export class FileTooLargeError extends Error {
+    constructor(public readonly size: number, public readonly limit: number = MAX_UPLOAD_BYTES) {
+        super(`File is ${Math.round(size / 1024)}KB, over the ${Math.round(limit / 1024)}KB limit`);
+        this.name = "FileTooLargeError";
+    }
+}
+
 export const uploadFileToStorage = async (file: File, filePath: string): Promise<string> => {
+    if (file.size > MAX_UPLOAD_BYTES) {
+        throw new FileTooLargeError(file.size);
+    }
     try {
         const fileRef = ref(storage, filePath);
         const uploadResult = await uploadBytes(fileRef, file);

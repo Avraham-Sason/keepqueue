@@ -1,8 +1,7 @@
 import { useState, useMemo } from "react";
 import type { CalendarEventStatus, CalendarEventWithRelations } from "@/lib/types";
-import { confirmAppointment, cancelAppointment } from "./helpers";
+import { cancelAppointment, confirmAppointment, updateAppointmentStatus } from "./helpers";
 import { useRefreshBusiness } from "../hooks";
-import { setDocument } from "@/lib/firebase";
 
 export function useAppointments(calendar: CalendarEventWithRelations[]) {
     const [statusFilter, setStatusFilter] = useState<CalendarEventStatus | "ALL">("ALL");
@@ -83,7 +82,7 @@ export function useAppointmentActions() {
     const handleMarkNoShow = async (eventId: string) => {
         setIsProcessing(true);
         try {
-            await setDocument("calendar", eventId, { status: "NO_SHOW" });
+            await updateAppointmentStatus(eventId, "NO_SHOW");
             refreshBusiness();
         } catch (error) {
             console.error("Error marking no-show:", error);
@@ -95,7 +94,7 @@ export function useAppointmentActions() {
     const handleMarkDone = async (eventId: string) => {
         setIsProcessing(true);
         try {
-            await setDocument("calendar", eventId, { status: "DONE" });
+            await updateAppointmentStatus(eventId, "DONE");
             refreshBusiness();
         } catch (error) {
             console.error("Error marking done:", error);
