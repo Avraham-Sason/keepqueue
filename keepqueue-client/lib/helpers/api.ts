@@ -31,7 +31,7 @@ interface ApiResponse<T> {
     error?: unknown;
 }
 
-export const serverUrl = isLocal ? "http://localhost:9000" : "https://keepqueue-server-latest.onrender.com";
+export const serverUrl = isLocal ? "http://localhost:9000" : "https://api.keepqueue.com";
 
 type Method = "GET" | "POST" | "PUT" | "DELETE";
 

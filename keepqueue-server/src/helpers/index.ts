@@ -31,6 +31,7 @@ export const initEnvVariables = (requiredVars: string[] = []) => {
 
 export const startServer = async (mainRouter: MainRouter, port?: number): Promise<Express> => {
     const app: Express = express();
+    app.set("trust proxy", 1);
     const { version, name } = packageJson;
     let envData = initEnvVariables(["port"]);
     const resolvedPort = Number(port || process.env.PORT || envData.port);
