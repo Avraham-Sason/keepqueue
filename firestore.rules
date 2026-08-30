@@ -1,0 +1,100 @@
+rules_version = '2';
+
+// Deny by default. Every collection below opens exactly the access the app needs today.
+//
+// Scope note: the client still writes to seven collections directly (BUG-37), so these rules
+// have to permit those writes rather than route everything through the server. They constrain
+// each write to the caller's own records instead of leaving the database open, which is the
+// state before this file existed — anyone holding the public Firebase config could read and
+// write every collection. Once BUG-37 moves those writes behind the API, the client-write
+// allowances here can collapse to `allow read` and nothing else.
+//
+// The Admin SDK the server uses bypasses rules entirely, so nothing here constrains the API.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function uid() {
+      return request.auth.uid;
+    }
+
+    function ownsBusiness(businessId) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/businesses/$(businessId))
+        && get(/databases/$(database)/documents/businesses/$(businessId)).data.ownerId == uid();
+    }
+
+    function isOwnRecord() {
+      return signedIn() && resource.data.userId == uid();
+    }
+
+    function creatingOwnRecord() {
+      return signedIn() && request.resource.data.userId == uid();
+    }
+
+    // Public booking pages render business details and their services and reviews.
+    match /businesses/{businessId} {
+      allow read: if true;
+      allow create: if signedIn() && request.resource.data.ownerId == uid();
+      allow update, delete: if signedIn() && resource.data.ownerId == uid();
+    }
+
+    match /services/{serviceId} {
+      allow read: if true;
+      allow create: if ownsBusiness(request.resource.data.businessId);
+      allow update, delete: if ownsBusiness(resource.data.businessId);
+    }
+
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if creatingOwnRecord();
+      // Moderation belongs to the business; a reviewer cannot edit a published review.
+      allow update, delete: if ownsBusiness(resource.data.businessId);
+    }
+
+    // A profile is readable and writable only by the person it describes. Businesses read their
+    // customers through the API, which is not subject to these rules.
+    match /users/{userId} {
+      allow read, write: if signedIn() && userId == uid();
+    }
+
+    match /calendar/{eventId} {
+      allow read: if isOwnRecord() || ownsBusiness(resource.data.businessId);
+      allow create: if creatingOwnRecord() || ownsBusiness(request.resource.data.businessId);
+      allow update: if isOwnRecord() || ownsBusiness(resource.data.businessId);
+      allow delete: if ownsBusiness(resource.data.businessId);
+    }
+
+    match /waitlist/{waitItemId} {
+      allow read: if isOwnRecord() || ownsBusiness(resource.data.businessId);
+      allow create: if creatingOwnRecord() || ownsBusiness(request.resource.data.businessId);
+      allow update, delete: if isOwnRecord() || ownsBusiness(resource.data.businessId);
+    }
+
+    match /staff/{staffId} {
+      allow read, write: if ownsBusiness(resource.data.businessId)
+        || ownsBusiness(request.resource.data.businessId);
+    }
+
+    match /message_templates/{templateId} {
+      allow read, write: if ownsBusiness(resource.data.businessId)
+        || ownsBusiness(request.resource.data.businessId);
+    }
+
+    // An audit trail nobody can read back or rewrite from a browser is worth more than one that
+    // can be tampered with; the server reads it through the Admin SDK.
+    match /audit/{auditId} {
+      allow create: if signedIn();
+      allow read, update, delete: if false;
+    }
+
+    // Anything not named above stays closed.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

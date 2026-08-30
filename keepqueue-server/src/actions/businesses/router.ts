@@ -6,7 +6,7 @@ import { customersRouter } from "./customers/router";
 import { waitlistRouter } from "./waitlist/router";
 import { reviewsRouter } from "./reviews/router";
 import { SUpdateBusiness } from "./services";
-import { validateBody } from "../../middlewares";
+import { authGuard, requireBusinessOwnership, validateBody } from "../../middlewares";
 import { updateBusinessSchema } from "./schemes";
 
 const businessesRouter: Router = express.Router();
@@ -18,6 +18,6 @@ businessesRouter.use("/customers", customersRouter);
 businessesRouter.use("/waitlist", waitlistRouter);
 businessesRouter.use("/reviews", reviewsRouter);
 
-businessesRouter.post("/update", validateBody(updateBusinessSchema), SUpdateBusiness);
+businessesRouter.post("/update", authGuard("business"), validateBody(updateBusinessSchema), requireBusinessOwnership(), SUpdateBusiness);
 
 export { businessesRouter };

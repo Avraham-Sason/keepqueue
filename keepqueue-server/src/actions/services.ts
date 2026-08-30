@@ -53,18 +53,3 @@ export const SLogin: RouterService = async (req, res, next) => {
     }
 };
 
-export const SSetCustomClaims: RouterService = async (req, res, next) => {
-    try {
-        const { userId, claims } = req.body as { userId: string; claims: Record<string, any> };
-        if (!userId || !claims) {
-            res.json(jsonFailed("userId and claims are required"));
-            return;
-        }
-
-        await auth.setCustomUserClaims(userId, claims);
-        res.json(jsonOK({ userId, claims }));
-    } catch (error) {
-        logger.error("Set custom claims error:", error);
-        next(error);
-    }
-};

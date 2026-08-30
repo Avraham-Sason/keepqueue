@@ -3,7 +3,7 @@
 **Date:** March 23–27, 2026 (8 sessions)
 **Version:** 1.0.5
 **Total bugs: 93** — Critical: 10 | High: 16 | Medium: 39 | Low: 28
-**Status: 20 fixed · 73 open** — fixed 2026-08-30: BUG-1, BUG-2, BUG-29 · fixed 2026-08-31: BUG-3, BUG-4, BUG-6, BUG-21, BUG-36, BUG-39, BUG-40, BUG-45, BUG-48, BUG-52, BUG-59, BUG-66, BUG-67, BUG-71, BUG-79, BUG-86, BUG-92 (client sent `eventId`, server Zod schema expects `calendarEventId`; verified with `npx tsc --noEmit` — no new type errors)
+**Status: 24 fixed · 69 open** — fixed 2026-08-30: BUG-1, BUG-2, BUG-29 · fixed 2026-08-31: BUG-3, BUG-4, BUG-6, BUG-21, BUG-36, BUG-39, BUG-40, BUG-45, BUG-48, BUG-52, BUG-59, BUG-66, BUG-67, BUG-71, BUG-79, BUG-86, BUG-92 (client sent `eventId`, server Zod schema expects `calendarEventId`; verified with `npx tsc --noEmit` — no new type errors)
 
 ---
 
@@ -264,7 +264,8 @@
 
 ## Critical (Added in Session 2)
 
-### BUG-20: API Endpoints Have No Authentication Middleware
+### BUG-20: API Endpoints Have No Authentication Middleware
+- **Status:** Fixed 2026-08-31 — every /actions and /data route now runs `authGuard`, per the approved endpoint classification; only the health checks, getBusiness, getAvailabilityByServiceId, getBusinessReviews and getBusinessRatings stay public because the booking page needs them
 - **Severity:** Critical (Security)
 - **Location:** `keepqueue-server/src/data/router.ts` and all action routers
 - **Steps to reproduce:**
@@ -481,7 +482,8 @@
 
 ## Critical (Added in Session 4)
 
-### BUG-35: setCustomClaims Endpoint Unauthenticated — Privilege Escalation
+### BUG-35: setCustomClaims Endpoint Unauthenticated — Privilege Escalation
+- **Status:** Fixed 2026-08-31 — the endpoint had no caller anywhere in the client and handed out claims to anyone who asked — route and handler deleted
 - **Severity:** Critical (Security)
 - **Location:** `keepqueue-server/src/actions/router.ts` line 10, `keepqueue-server/src/actions/services.ts` lines 52-66
 - **Steps to reproduce:**
@@ -575,7 +577,8 @@
 
 ## Low (Added in Session 4)
 
-### BUG-41 (Informational): authGuard Middleware Exists But Is Never Used
+### BUG-41 (Informational): authGuard Middleware Exists But Is Never Used
+- **Status:** Fixed 2026-08-31 — `authGuard` is now applied; a new ownership layer sits beside it, because authGuard proves account type and not that the caller owns the record
 - **Severity:** Low (Informational — covered by BUG-20)
 - **Location:** `keepqueue-server/src/middlewares/authGuard.ts`
 - **Description:** A fully functional `authGuard` middleware exists with Firebase token verification and role-based access control (business/customer/staff). It is exported from `middlewares/index.ts` but **never applied to any router**. This suggests auth was intended but forgotten during development.
@@ -586,7 +589,8 @@
 
 ## Critical (Added in Session 5)
 
-### BUG-42: No Firestore Security Rules — Database Completely Unprotected
+### BUG-42: No Firestore Security Rules — Database Completely Unprotected
+- **Status:** Fixed 2026-08-31 — `firestore.rules` added at the repo root, deny-by-default with per-collection ownership. **Not deployed** — that needs the Firebase CLI
 - **Severity:** Critical (Security)
 - **Location:** Project root — missing `firestore.rules` file
 - **Description:** No `firestore.rules`, no `firebase.json`, and no `firestore.indexes.json` exist in the repository. The database relies on default Firestore security rules (likely open). Combined with BUG-37 (12 client files writing directly to 7 collections), any authenticated Firebase user can read/write any collection.

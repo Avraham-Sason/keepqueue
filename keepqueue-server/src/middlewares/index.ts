@@ -1,3 +1,4 @@
+export * from "./ownership";
 import { type Request, type Response, type NextFunction } from "express";
 import { jsonFailed, trimStrings } from "../helpers";
 import { MW } from "../types";

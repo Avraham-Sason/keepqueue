@@ -10,32 +10,32 @@ import {
     getBusinessWaitlistSchema, getBusinessReviewsSchema, getBusinessRatingsSchema,
     getBusinessAppointmentsSchema, getBusinessAnalyticsSchema,
 } from "./schemes";
-import { validateBody } from "../middlewares";
+import { authGuard, requireBusinessOwnership, validateBody } from "../middlewares";
 
 const dataRouter: Router = express.Router();
 
 dataRouter.get("/", (req, res) => res.send("OK from data"));
 
-dataRouter.post("/getCollection", validateBody(getCollectionSchema), S_getCollection);
+dataRouter.post("/getCollection", authGuard(), validateBody(getCollectionSchema), S_getCollection);
 
 dataRouter.post("/getBusiness", validateBody(getBusinessSchema), S_getBusiness);
 
 dataRouter.post("/getAvailabilityByServiceId", validateBody(getAvailabilityByServiceIdSchema), S_getAvailabilityByServiceId);
 
-dataRouter.post("/getBusinessCustomers", validateBody(getBusinessCustomersSchema), S_getBusinessCustomers);
+dataRouter.post("/getBusinessCustomers", authGuard("business"), validateBody(getBusinessCustomersSchema), requireBusinessOwnership(), S_getBusinessCustomers);
 
-dataRouter.post("/getUserById", validateBody(getUserByIdSchema), S_getUserById);
+dataRouter.post("/getUserById", authGuard(), validateBody(getUserByIdSchema), S_getUserById);
 
-dataRouter.post("/getBusinessStaff", validateBody(getBusinessStaffSchema), S_getBusinessStaff);
+dataRouter.post("/getBusinessStaff", authGuard("business"), validateBody(getBusinessStaffSchema), requireBusinessOwnership(), S_getBusinessStaff);
 
-dataRouter.post("/getBusinessWaitlist", validateBody(getBusinessWaitlistSchema), S_getBusinessWaitlist);
+dataRouter.post("/getBusinessWaitlist", authGuard("business"), validateBody(getBusinessWaitlistSchema), requireBusinessOwnership(), S_getBusinessWaitlist);
 
 dataRouter.post("/getBusinessReviews", validateBody(getBusinessReviewsSchema), S_getBusinessReviews);
 
 dataRouter.post("/getBusinessRatings", validateBody(getBusinessRatingsSchema), S_getBusinessRatings);
 
-dataRouter.post("/getBusinessAppointments", validateBody(getBusinessAppointmentsSchema), S_getBusinessAppointments);
+dataRouter.post("/getBusinessAppointments", authGuard("business"), validateBody(getBusinessAppointmentsSchema), requireBusinessOwnership(), S_getBusinessAppointments);
 
-dataRouter.post("/getBusinessAnalytics", validateBody(getBusinessAnalyticsSchema), S_getBusinessAnalytics);
+dataRouter.post("/getBusinessAnalytics", authGuard("business"), validateBody(getBusinessAnalyticsSchema), requireBusinessOwnership(), S_getBusinessAnalytics);
 
 export { dataRouter };

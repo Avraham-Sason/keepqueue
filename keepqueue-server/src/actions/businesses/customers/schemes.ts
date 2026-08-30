@@ -17,6 +17,7 @@ export const unblockCustomerSchema = object({
 export type UnblockCustomerModel = z.infer<typeof unblockCustomerSchema>;
 
 export const updateCustomerSchema = object({
+    businessId: string().min(1),
     customerId: string().min(1),
     notes: string().max(2000).optional(),
     phone: string().max(20).optional(),
