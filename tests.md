@@ -1,11 +1,13 @@
 # Keepqueue Platform — QA Testing Report
 
-**Date:** March 23, 2026
+**Date:** March 23–27, 2026 (8 sessions)
 **Tester:** Claude (Automated QA)
 **Version:** 1.0.5
 **Environment:** localhost (client :3000, server :9000)
 **Browser:** Chromium (via Claude Preview)
 **Viewports tested:** Desktop (1280x800), Tablet (768x1024), Mobile (375x812)
+**Total tests:** 68 | **Total bugs:** 93 (see [bugs.md](./bugs.md))
+**Fix status:** 3 fixed 2026-08-30 (BUG-1, BUG-2, BUG-29) | 90 open
 
 ---
 
@@ -69,6 +71,7 @@
 - **Root cause:** Client sends `{ eventId }` but server Zod schema expects `{ calendarEventId }`
   - File: `keepqueue-client/app/business/appointments/helpers.ts`
   - Server schema: `keepqueue-server/src/actions/businesses/appointments/schemes.ts`
+- **Fix status:** Fixed 2026-08-30 — `helpers.ts:5` and `helpers.ts:9` now send `{ calendarEventId: eventId }` (BUG-1, BUG-2). Verified with `npx tsc --noEmit`, no new type errors. Not re-tested at runtime. BUG-7 (no-show/done bypass server API) still open.
 
 ### 7. Search and Filter on Appointments
 - **Status:** Tested
@@ -313,11 +316,393 @@
 - **Result:** Dialog shows customer's appointment history with dates, times, services, and status badges ✅
 - **Notes:** Past appointments still show "Booked" status (29/01/2026) — no auto-expiry of old bookings
 
+### 33. Customers Page — View Appointments & Block Customer (Session 3)
+- **Status:** Tested
+- **Steps:**
+  - Navigated to Customers page via sidebar
+  - Reviewed customer card (Noa Levi — Active, name, email, phone, 4 appointments)
+  - Clicked "View appointments" → modal shows all 4 appointments with status and dates
+  - Clicked "Block" → confirmation dialog appears with proper warning message
+  - Cancelled the block action
+- **Result:** Both features work correctly ✅
+- **Bugs found:** No search/filter on customers page (minor gap); past appointments still show "Booked" (BUG-33)
+- **Notes:** Block confirmation dialog has proper UX with cancel/confirm buttons
+
+### 34. Reviews Page (Session 3)
+- **Status:** Tested
+- **Steps:** Navigated to Reviews & Ratings page
+- **Result:** Page loads correctly with "No reviews yet — Customer reviews will appear here" empty state ✅
+- **Notes:** Clean empty state with icon, no errors
+
+### 35. Staff Management — Add Staff Dialog (Session 3)
+- **Status:** Tested
+- **Steps:**
+  - Navigated to Staff Management page
+  - Clicked "Add staff member"
+  - Verified dialog fields: First name, Last name, Email, Phone, Role dropdown (Employee/Manager/Owner), Color tag, Notes
+  - Tested mixed Hebrew/English/emoji input: "אברהם Test 🏋️" — accepted correctly ✅
+  - Tested XSS payload in last name: `O'Brien <script>alert(1)</script>` — accepted without execution ✅
+- **Result:** Form renders correctly, inputs accept mixed character sets ✅
+- **Notes:** Empty state shows dual CTA (header button + body button)
+
+### 36. Focus Trap in Modal Dialogs (Session 3)
+- **Status:** Tested
+- **Steps:**
+  - Opened "Add staff member" dialog
+  - Counted focusable elements inside dialog: 11 (inputs, buttons, selects, textarea)
+  - Focused last element and pressed Tab
+  - Verified focus stayed inside dialog
+- **Result:** Focus trap works correctly ✅ — Radix Dialog handles focus management properly
+- **Notes:** Focus cycles through all 11 elements and wraps back to the first
+
+### 37. Dark/Light Mode Toggle and Cross-Page Theme (Session 3)
+- **Status:** Tested
+- **Steps:**
+  - Started in dark mode, toggled to light mode via sidebar button
+  - Verified Staff page in light mode — clean, good contrast ✅
+  - Verified Dashboard in light mode — cards readable, avatar visible ✅
+  - Verified Appointments page in light mode — filters, cards, badges all properly themed ✅
+- **Result:** Theme toggle works, both modes render correctly across pages ✅
+- **Bugs found:**
+  - Theme toggle button has no `aria-label` (BUG-32)
+  - Sidebar highlights "Dashboard" even when on Appointments page (BUG-31)
+
+### 38. Mobile Responsive Layout — 375px (Session 3)
+- **Status:** Tested
+- **Pages tested at 375px:**
+  - **Appointments:** Filters stack vertically ✅, but action buttons overflow — "Mark no-show" and "Mark done" truncated (BUG-28)
+  - **Dashboard:** Cards stack vertically ✅, services as badges ✅, Quick Actions stacked ✅
+  - **Public booking page:** Business info card ✅, service selection cards stack ✅, step indicator visible ✅
+  - **Booking step 2 (date/time):** Date buttons in 2-column grid ✅, time slots in 2-column grid ✅
+- **Result:** Good overall mobile layout, but appointment action buttons are inaccessible on mobile (BUG-28)
+- **Notes:** BUG-21 (past time slots bookable) confirmed on mobile too
+
+### 39. Customer Sign-In and Dashboard Access (Session 3)
+- **Status:** Tested
+- **Steps:**
+  - Signed in as customer (noa@customer.com) via `/auth/signin/customer`
+  - Observed redirect destination
+  - Searched for "My Appointments" or "Dashboard" link in navbar
+  - Attempted to navigate to `/customer/dashboard` directly
+- **Result:**
+  - Customer sign-in redirects to public booking page `/home/GPajiLlPDRwWaJwNvWoz` — NOT to customer dashboard
+  - No link to customer dashboard exists in the booking page navbar (BUG-30)
+  - Direct URL navigation to `/customer/dashboard` loses session (BUG-3 again)
+- **Notes:** Customer dashboard code exists and has cancel functionality, but is effectively unreachable
+
+### 40. Customer Cancel Appointment — Code Review (Session 3)
+- **Status:** Tested (code review)
+- **Steps:** Read `keepqueue-client/app/customer/dashboard/page.tsx` line 86
+- **Result:** `handleCancel()` sends `{ eventId }` — same field name mismatch as BUG-1/BUG-2 (BUG-29)
+- **Fix status:** Fixed 2026-08-30 — `page.tsx:86` now sends `{ calendarEventId: eventId }` (BUG-29). Verified with `npx tsc --noEmit`, no new type errors. Not re-tested at runtime.
+- **Notes:** Even if customer could reach the dashboard, cancellation would fail with 400 error — BUG-30 (dashboard unreachable) is still open, so this path stays untestable via the UI.
+
+### 41. API Error Logging Quality (Session 3)
+- **Status:** Tested
+- **Steps:** Reviewed console errors during normal navigation
+- **Result:** Repeated `Error calling API: getBusiness` errors with both `CanceledError` and `[object Object]` (BUG-34)
+- **Notes:** `[object Object]` indicates error objects being concatenated as strings instead of properly serialized — masks actual error details
+
+### 42. Server-Side Code Review — Auth Middleware (Session 4)
+- **Status:** Tested (code review)
+- **Steps:** Read all server router files and middleware implementations
+- **Result:**
+  - `authGuard` middleware exists at `middlewares/authGuard.ts` — fully functional with Firebase token verification and role-based checks (business/customer/staff)
+  - **NOT applied to ANY router** — confirmed across all 9 routers (BUG-41)
+  - All routes only use `validateBody()` for Zod schema validation
+- **Impact:** Confirms and deepens BUG-20 finding — auth was designed but never wired up
+
+### 43. Server-Side Code Review — setCustomClaims Privilege Escalation (Session 4)
+- **Status:** Tested (code review)
+- **Steps:** Read `keepqueue-server/src/actions/services.ts` lines 52-66
+- **Result:** `POST /actions/setCustomClaims` accepts `{ userId, claims }` and calls `auth.setCustomUserClaims(userId, claims)` with **no authentication, no authorization, no input validation** beyond checking that both fields exist (BUG-35)
+- **Impact:** Any user can escalate privileges for any Firebase user — critical security vulnerability
+
+### 44. Server-Side Code Review — CORS Configuration (Session 4)
+- **Status:** Tested (code review)
+- **Steps:** Read `keepqueue-server/src/helpers/index.ts` line 38
+- **Result:** `app.use(cors())` — no origin restrictions configured (BUG-36)
+- **Impact:** Combined with BUG-20, any website can access all API endpoints
+
+### 45. Client-Side Firestore Direct Write Audit (Session 4)
+- **Status:** Tested (code review)
+- **Steps:** Searched all client code for `setDocument`, `addDocument`, `deleteDocument` calls
+- **Result:** Found **9 files** across **7 Firestore collections** that write directly, bypassing the server API (BUG-37)
+- **Collections affected:** calendar, services, staff, users, reviews, waitlist, businesses
+- **Impact:** Server cache goes stale, no audit trail, no server-side validation on most write operations
+
+### 46. Session Persistence Root Cause Analysis (Session 4)
+- **Status:** Tested (code review)
+- **Steps:**
+  - Read `lib/store/authStore.ts` — Zustand persist middleware stores auth to localStorage
+  - Searched for `onAuthStateChanged` — **zero results** in entire codebase
+  - Read `lib/firebase/connect.ts` — only initializes Firebase Auth object, no listeners
+  - Read `components/config/Language.tsx` — language toggle calls `window.location.reload()`
+- **Result:** Root cause of BUG-3 and BUG-4 identified (BUG-39):
+  - No `onAuthStateChanged()` listener to sync Firebase auth with Zustand
+  - Zustand rehydrates asynchronously on page load → race condition
+  - Components render with `user === null` before rehydration completes
+  - Language toggle triggers full page reload → same race condition
+
+### 47. Analytics Data Query Root Cause Analysis (Session 4)
+- **Status:** Tested (code review)
+- **Steps:**
+  - Read server `data/services.ts` — `S_getBusinessAnalytics` filters by `e.created.toMillis() >= periodStart`
+  - Read client `analytics/hooks.tsx` — filters by `e.start.seconds * 1000 >= cutoff`
+- **Result:** Root cause of BUG-6 identified (BUG-40) — server filters by creation date, client filters by appointment start date. This mismatch causes analytics to return 0 when appointments exist.
+
+### 48. Calendar "New Event" Form Validation (Session 4)
+- **Status:** Tested
+- **Steps:**
+  - Clicked "New event" on Calendar page
+  - Observed form: Title, Type (Vacation/Holiday/Other), Start date, End date
+  - Left title empty and clicked "Add"
+- **Result:** No validation error — empty title accepted (BUG-38)
+- **Notes:** Create event dialog does have a proper `DialogTitle` (unlike most other dialogs)
+
+### 49. Edit Details Form Review (Session 4)
+- **Status:** Tested
+- **Steps:** Navigated to Edit Details, inspected all form fields
+- **Result:** All fields populated correctly (name, phone, owner info, working hours, policies)
+- **Findings:**
+  - Address field is empty — confirms root cause of BUG-10
+  - Billing currency shows "ILS" (previously reported empty in BUG-13 — may have been updated)
+  - "Save changes" button present
+  - Working hours section has per-day toggles with open/close times ✅
+
+### 50. Business Sign-Up Form Validation (Session 4)
+- **Status:** Tested
+- **Steps:**
+  - Navigated to business sign-up page
+  - Verified form fields: First name, Last name, Email, Phone, Password, Confirm password
+  - Submitted with empty fields → HTML5 "Please fill out this field" validation ✅
+  - Submitted with mismatched passwords → "Passwords do not match" error ✅
+- **Result:** Sign-up form validation works correctly ✅
+
+---
+
+### 51. Bundle Size Analysis (Session 5)
+- **Status:** Tested (code review)
+- **Steps:** Analyzed package.json dependencies, import patterns, dynamic imports, tree-shaking
+- **Result:**
+  - Duplicate date libraries: moment + moment-timezone + date-fns (BUG-54)
+  - 3 animation libraries: framer-motion (23 uses), `motion` (0 uses — BUG-55), gsap (1 use)
+  - No `dynamic()` or `lazy()` imports anywhere — all heavy components eagerly loaded (BUG-56)
+  - Duplicate icon libraries: lucide-react (38 files) + @remixicon/react (3 files) (BUG-57)
+  - Firebase imports properly tree-shakeable (good)
+  - 74 custom Tailwind keyframes, many potentially unused
+- **Estimated bundle reduction potential:** 115-180KB
+
+### 52. Timezone Handling Review (Session 5)
+- **Status:** Tested (code review)
+- **Steps:** Traced date creation, storage, display, and conversion across client and server
+- **Result:**
+  - Dates stored as UTC Firestore Timestamps (good)
+  - Business timezone accessed via `(business as any)?.timeZone` — not in type schema (BUG-44)
+  - Hardcoded "Asia/Jerusalem" fallback in server helpers and logger
+  - Server availability computation is timezone-aware with DST handling (good)
+  - Client booking flow converts to UTC correctly via `moment.utc().valueOf()` (good)
+  - Off-by-one day risk for cross-timezone users (BUG-51)
+  - `withinSchedule()` uses `moment.utc()` which may misvalidate against non-UTC schedules
+
+### 53. Concurrent Booking & Overlap Detection Review (Session 5)
+- **Status:** Tested (code review)
+- **Steps:** Analyzed `hasCalendarOverlapInCache`, `SCreateAppointment`, `SRescheduleAppointment`, cache sync architecture
+- **Result:**
+  - Overlap detection math is correct — edge cases (same time, back-to-back, partial overlap) all handled properly
+  - Cancelled/Done/No-Show correctly excluded from overlap checks
+  - **Critical:** Overlap check reads from in-memory cache, NOT within Firestore transaction (BUG-43)
+  - No locking mechanism, no database constraints
+  - Async cache sync creates race condition window for double-bookings
+  - Reschedule self-overlap bug — appointment detects itself as conflict (BUG-45)
+  - No validation that start < end in Zod schema (BUG-52)
+  - No validation that start is in the future
+
+### 54. Message Templates & Notification System Review (Session 5)
+- **Status:** Tested (code review)
+- **Steps:** Traced MessageTemplate and NotificationLog types through entire codebase
+- **Result:**
+  - Type definitions complete in both client and server
+  - Firestore collections registered (message_templates, notification_logs)
+  - Cache layer configured and operational
+  - Data API returns business templates via S_getBusiness
+  - User notification preferences modeled (UserBase.contacts)
+  - **Zero implementation:** No sending logic, no template editor UI, no variable substitution, no scheduled reminders (BUG-53)
+  - TODO-SERVER.text describes expected scope (Twilio, SendGrid, reminder scheduler)
+
+### 55. Firestore Security Rules Review (Session 5)
+- **Status:** Tested (code review)
+- **Steps:** Searched for firestore.rules, firebase.json, firestore.indexes.json; audited all client-side direct writes
+- **Result:**
+  - **No firestore.rules file exists** — database completely unprotected (BUG-42)
+  - No firebase.json configuration file
+  - 12 client files perform direct writes to 7 collections with zero authorization checks
+  - No ownership verification before writes (any user can modify any document by ID)
+  - Client can write false audit records
+  - No schema validation on client-side writes (Zod not used)
+  - Deepens BUG-37 finding with additional detail
+
+### 56. File Upload & Image Handling Review (Session 5)
+- **Status:** Tested (code review)
+- **Steps:** Traced logo upload flow from UI through FileReader to Firestore storage
+- **Result:**
+  - Logo upload converts to base64 via FileReader.readAsDataURL() — stored inline in Firestore (BUG-47)
+  - No file size validation — can exceed Firestore 1MB document limit (BUG-46)
+  - No server-side MIME validation — `logoUrl: string().optional()` accepts any string
+  - Browser-side `accept="image/png,image/jpeg,image/webp"` easily bypassed
+  - Firebase Storage utility exists (`uploadFileToStorage()`) but never used for logos
+  - `<Image>` component uses `unoptimized` prop — no Next.js optimization
+  - photoURL field on User and StaffMember types — same pattern potential
+
+### 57. Token Expiry & Refresh Review (Session 5)
+- **Status:** Tested (code review)
+- **Steps:** Traced token lifecycle from creation through API calls to server verification
+- **Result:**
+  - Token retrieved on every API call via `auth.currentUser?.getIdToken()` (without forceRefresh)
+  - No 401 response handling in API client (BUG-48)
+  - No axios interceptor for token retry
+  - No `onIdTokenChanged` listener for proactive refresh
+  - No `onAuthStateChanged` listener (already BUG-39)
+  - Server error handler returns 500 for all errors including auth failures — makes client-side 401 detection impossible
+  - Auth state persisted to localStorage but never revalidated
+  - No session timeout UI or auto-logout
+  - React Query retries once but no token-aware retry strategy
+
+### 58. Error Handling Patterns Review (Session 5)
+- **Status:** Tested (code review)
+- **Steps:** Audited error handling across all server route handlers, client API calls, Firestore operations, and UI feedback
+- **Result:**
+  - **Server:** Good — all Express handlers use try/catch + next(error); Zod validation returns 400 with details
+  - **Client API:** Good — custom ApiError class, error message extraction
+  - **Client Firestore:** Bad — all operations swallow errors, return fallback values (BUG-50)
+  - **UI feedback:** Inconsistent — booking flow shows errors; service/staff operations fail silently
+  - **No global error boundary** — unhandled errors crash entire app (BUG-49)
+  - **No error tracking service** — no Sentry/LogRocket (BUG-58)
+  - Intentional error suppression in booking hooks: `catch (_) { // ignore }`
+  - `addAuditRecord()` uses `console.log()` instead of `console.error()` for errors
+  - Server app.ts top-level catch only calls `process.exit(1)` with no logging
+
+---
+
+### 59. Rate Limiting & DoS Protection Review (Session 5)
+- **Status:** Tested (code review)
+- **Steps:** Analyzed rate limiter implementation, body size limits, security headers, login protection
+- **Result:**
+  - Custom rate limiter exists: 100 req/60s per IP, in-memory Map store, auto-cleanup every 5min (good)
+  - Applied globally to all routes (no per-route overrides)
+  - No helmet.js or security headers (BUG-59)
+  - No login brute-force protection — no slowdown on failed auth (BUG-60)
+  - express.json() uses default 100KB limit (not explicitly configured — BUG-65)
+  - In-memory store not scalable to multi-instance (BUG-64)
+  - No API key mechanism
+  - No CSRF protection
+
+### 60. Type Synchronization Client-Server Audit (Session 5)
+- **Status:** Tested (code review)
+- **Steps:** Compared global.ts and business.ts type files between client and server line by line
+- **Result:**
+  - Timestamp import differs (firebase-admin vs firebase) — expected, different SDKs
+  - `Business.description` field exists in client but NOT in server (BUG-62)
+  - Audit interface entity types mismatch: server has 7 entity types, client has 3 (BUG-61)
+  - Audit interface action types mismatch: server has 6 action types, client has 3 (BUG-61)
+  - Business.ts files are in sync (minor whitespace differences only)
+
+### 61. Memory Leaks & React Patterns Review (Session 5)
+- **Status:** Tested (code review)
+- **Steps:** Searched for useEffect without cleanup, setInterval/setTimeout without clear, addEventListener without remove, missing dependencies
+- **Result:**
+  - 3 missing setTimeout cleanups in QuickActionsSection and BookingInterface (BUG-63)
+  - Most event listeners properly cleaned up (EventsPopup, EventCalendar, Sidebar, useIsMobile — all good)
+  - Firestore onSnapshot returns unsubscribe function properly
+  - TextType.tsx and CountUp.tsx properly clean up timeouts (good)
+  - useCurrentTimeIndicator properly cleans up interval (good)
+  - GlobalConfig.tsx has missing dependency in useEffect (minor)
+  - React Query configured with reasonable defaults (staleTime: 5s, retry: 1)
+
+---
+
+### 62. Zod Validation Completeness Audit (Session 5)
+- **Status:** Tested (code review)
+- **Steps:** Analyzed all 8 Zod schema files, compared against TypeScript interfaces, checked for injection vectors
+- **Result:**
+  - validateBody middleware properly uses safeParse() and returns 400 (good)
+  - `getCollectionSchema` has `value: any()` and unconstrained `fieldName` — prototype pollution risk (BUG-66)
+  - No cross-field validation anywhere: end > start, to >= from, endMin > startMin (BUG-67)
+  - Inconsistent ID min length: some min(5), most min(1) (BUG-68)
+  - Phone fields lack min length and regex (BUG-69)
+  - logoUrl missing .url() validation unlike staff photoURL (BUG-70)
+  - `/actions/login` and `/actions/setCustomClaims` have NO validateBody middleware
+  - Enum validation is proper throughout (good)
+  - Email/URL validation present in staff schemas (good)
+  - Schema-interface alignment is good — all required fields covered
+  - Notes fields consistently capped at 2000 chars (good)
+
+---
+
+### 63. API Authentication Audit — Full Endpoint Scan (Session 6)
+- **Status:** Tested
+- **Steps:** Sent unauthenticated requests (no Authorization header) to all 25 API endpoints via curl
+- **Result:**
+  - `/actions/login` (empty body) → 500 (BUG-86)
+  - `/actions/setCustomClaims` → 200 with no auth (BUG-35)
+  - All 17 `/actions/businesses/*` routes → 400 instead of 401 (BUG-20)
+  - `/data/getBusinessCustomers` → 200, exposes PII (BUG-20)
+  - `/data/getUserById` → 200, exposes PII (BUG-20)
+  - `/data/getBusiness` (empty body) → 200 with error body (BUG-79)
+  - `/data/getCollection` (valid) → 400 ✅
+  - `/data/getAvailabilityByServiceId` (valid) → 200 ✅
+  - 15x concurrent `/data/getBusiness` → all 200 ✅
+
+### 64. English / i18n Mode Testing (Session 7)
+- **Status:** Tested
+- **Steps:** Set `language=en` cookie and tested landing page, sign-in, and booking pages
+- **Result:**
+  - Landing page first load: RTL with `lang="he"` (BUG-77)
+  - After client hydration: LTR with `lang="en"` ✅
+  - Sign-in page: Hebrew persists (BUG-76)
+  - Testimonials and CTA: Hebrew (BUG-78)
+  - Language toggle button: Works after click ✅
+
+### 65. Landing Page Full Audit (Session 7)
+- **Status:** Tested
+- **Steps:** Tested all landing page sections, CTAs, nav links, footer, newsletter, and responsive layout
+- **Result:**
+  - Hero section: Renders correctly ✅
+  - CTA buttons: Dead divs (BUG-72)
+  - Footer links: All 9 return 404 (BUG-74)
+  - Newsletter button: Non-functional (BUG-82)
+  - #pricing nav link: No target section (BUG-83)
+  - Testimonial images: Placeholders (BUG-81)
+  - Copyright: Shows 2024 (BUG-87)
+  - Mobile (375px): No hamburger menu (BUG-93)
+
+### 66. Public Booking Page — Invalid Business IDs (Session 7)
+- **Status:** Tested
+- **Steps:** Navigated to `/home/invalid-id-xyz` and `/home/<script>alert(1)</script>`
+- **Result:**
+  - Invalid ID: Shows empty booking UI instead of 404 (BUG-75)
+  - XSS attempt: Properly escaped ✅
+  - Valid business: Firebase permission error (BUG-73), no services shown (BUG-80)
+
+### 67. Client TypeScript Compilation (Session 8)
+- **Status:** Tested
+- **Steps:** Ran `cd keepqueue-client && npx tsc --noEmit`
+- **Result:** 7 errors in 4 files (BUG-85)
+- **Notes:** Server TypeScript compiles cleanly (0 errors) ✅
+
+### 68. Custom 404 and Debug Pages (Session 8)
+- **Status:** Tested
+- **Steps:** Navigated to `/nonexistent`, `/business/fake`, `/test`
+- **Result:**
+  - Unknown routes: Default Next.js 404 page (BUG-84)
+  - `/test`: Publicly accessible debug page (BUG-92)
+  - Auth redirects: `/business/*` → sign-in ✅, `/customer/*` → sign-in ✅
+
 ---
 
 ## Bugs Found
 
-**27 bugs documented in [`bugs.md`](./bugs.md)** — Critical: 4 | High: 6 | Medium: 10 | Low: 7
+**93 bugs documented in [`bugs.md`](./bugs.md)** — Critical: 10 | High: 16 | Medium: 39 | Low: 28 · 3 fixed 2026-08-30 (BUG-1, BUG-2, BUG-29)
 
 ---
 
@@ -341,6 +726,15 @@
 - **Forgot password flow:** Reset password page with email validation and "Back to sign in" link works
 - **Customer appointments view:** Dialog shows full appointment history per customer with proper status badges
 - **Edit Details page:** Comprehensive form with branding, info, policies, and working hours sections
+- **Focus trap in dialogs:** Radix Dialog properly traps focus within modals — Tab cycles through all focusable elements
+- **Mixed character input:** Hebrew, English, emoji, and special characters all accepted in form fields
+- **Block customer flow:** Proper confirmation dialog with clear warning message before destructive action
+- **Light/dark mode:** Both themes render consistently across all admin pages — no readability issues
+- **Mobile booking flow:** Service selection, date picker, and time slots all work well at 375px width
+- **Customer appointments dialog:** Shows full history per customer with proper status badges and dates
+- **Sign-up form validation:** Required fields, password mismatch detection, and email format all properly validated
+- **Calendar new event dialog:** Has proper DialogTitle (unlike most other dialogs) — good UX baseline
+- **authGuard middleware quality:** The existing (but unused) auth middleware is well-designed — verifies tokens, checks roles, handles edge cases
 
 ---
 
@@ -350,29 +744,29 @@ The following areas were not tested due to time/scope constraints:
 
 ### Functional Tests
 - [ ] **Email/SMS notification delivery** — Cannot verify actual notification sending in dev environment
-- [ ] **Concurrent booking conflicts** — Multiple users booking the same slot simultaneously
+- [x] **Concurrent booking conflicts** — ❌ Race condition: overlap check reads cache, not Firestore transaction. Double-bookings possible (BUG-43). Reschedule self-overlap bug (BUG-45)
 - [ ] **Payment/billing flow** — If payment integration exists, it was not tested
-- [ ] **File upload** — Business photo/logo upload functionality (only viewed existing images)
-- [ ] **Rate limiting** — Server has `rateLimiter(60 * 1000, 100)` — not stress-tested
-- [ ] **Token expiry/refresh** — Long-lived session behavior and token refresh logic
+- [x] **File upload** — ❌ Logo stored as base64 in Firestore (BUG-47); no file size validation (BUG-46); Firebase Storage exists but unused
+- [x] **Rate limiting** — ✅ Code reviewed: 100 req/60s per IP, no per-route limits, no login slowdown (BUG-59/60/64/65)
+- [x] **Token expiry/refresh** — ❌ No 401 handling (BUG-48); no forceRefresh; no onIdTokenChanged listener; no session timeout UI
 - [ ] **Multiple business accounts** — Switching between businesses (if supported)
-- [ ] **Customer booking cancellation** — Customer-side cancellation of their own appointments
-- [ ] **Waitlist functionality** — `WaitItem` type exists but waitlist flow not tested
-- [ ] **Message templates** — `MessageTemplate` type exists but template management not tested
+- [x] **Customer booking cancellation** — ✅ Field name mismatch fixed 2026-08-30 (BUG-29); ❌ dashboard still unreachable (BUG-30)
+- [x] **Waitlist functionality** — ✅ WaitlistForm component exists, writes directly to Firestore. Not exposed in main booking UI flow
+- [x] **Message templates** — ✅ Full infrastructure exists (types, cache, data API, user prefs) but zero sending implementation (BUG-53)
 
 ### Security Tests
-- [ ] **Authorization bypass** — Accessing other businesses' data by manipulating IDs (partially tested — see BUG-20)
+- [x] **Authorization bypass** — ❌ All endpoints unauthenticated (BUG-20); setCustomClaims allows privilege escalation (BUG-35)
 - [x] **XSS** — ✅ React auto-escaping prevents XSS (tested in session 2)
-- [ ] **CSRF protection** — Cross-site request forgery prevention
-- [ ] **Rate limiting abuse** — Brute-force login attempts
-- [x] **API endpoint authorization** — ❌ No auth middleware on any route (BUG-20, tested in session 2)
-- [ ] **Firestore security rules** — Direct Firestore access bypassing server (related to BUG-7)
+- [x] **CSRF protection** — ❌ No CSRF middleware; `cors()` allows all origins (BUG-36)
+- [ ] **Rate limiting abuse** — Brute-force login attempts (rate limiter exists: 100 req/min but not tested)
+- [x] **API endpoint authorization** — ❌ No auth middleware on any route (BUG-20); authGuard exists but unused (BUG-41)
+- [x] **Firestore security rules** — ❌ Client writes to 7 collections directly, bypassing server (BUG-37)
 
 ### Performance Tests
 - [ ] **Page load times** — Measuring actual load performance metrics
 - [ ] **Large dataset behavior** — How the app behaves with 1000+ appointments/customers
-- [ ] **Memory leaks** — Long-running session with multiple navigations
-- [ ] **Bundle size analysis** — Client-side JavaScript payload size
+- [x] **Memory leaks** — ✅ Code reviewed: 3 missing setTimeout cleanups (BUG-63); most listeners properly cleaned up
+- [x] **Bundle size analysis** — ❌ Duplicate date libs (~70KB), unused motion package, no code splitting, duplicate icon libs (BUG-54/55/56/57)
 - [ ] **API response times** — Server endpoint latency under load
 
 ### Cross-Browser Tests
@@ -386,14 +780,14 @@ The following areas were not tested due to time/scope constraints:
 - [ ] **Screen reader testing** — Full NVDA/VoiceOver walkthrough
 - [x] **Keyboard-only navigation** — Partially tested: Tab only cycles through 4 elements on appointments page; action buttons not focusable; focus ring invisible on buttons
 - [ ] **Color contrast ratios** — WCAG AA/AAA compliance verification
-- [ ] **Focus trap in modals** — Dialog focus management
-- [ ] **ARIA attributes completeness** — Beyond the DialogTitle issues already found
+- [x] **Focus trap in modals** — ✅ Tested in Add Staff dialog — Radix handles focus trap correctly (11 focusable elements)
+- [ ] **ARIA attributes completeness** — Beyond the DialogTitle issues already found; theme toggle missing aria-label (BUG-32)
 
 ### Edge Cases
 - [x] **Empty states** — ✅ Tested (reviews, appointments search, staff) — see BUG-24
 - [x] **Very long text** — ✅ 545-char input accepted, no overflow — no max-length validation
-- [ ] **Special characters** — Hebrew + English mixed input, emoji, RTL/LTR mixed content
-- [ ] **Timezone handling** — Bookings across timezone boundaries
+- [x] **Special characters** — ✅ Mixed Hebrew/English/emoji input accepted in staff form ("אברהם Test 🏋️")
+- [x] **Timezone handling** — ❌ Business timezone not in schema (BUG-44); hardcoded "Asia/Jerusalem" fallback; off-by-one day risk (BUG-51)
 - [x] **Past date booking prevention** — ✅ Past dates hidden, but past time slots for today are bookable (BUG-21)
 - [ ] **Offline behavior** — Network disconnection handling
 - [x] **Back button behavior** — ❌ Browser back exits wizard entirely (BUG-22)
@@ -402,30 +796,65 @@ The following areas were not tested due to time/scope constraints:
 
 ## Recommended Priority Fixes
 
-### Immediate (Fix Today)
-1. **BUG-1 & BUG-2** — Change `{ eventId }` to `{ calendarEventId: eventId }` in `keepqueue-client/app/business/appointments/helpers.ts` (2-line fix each)
+### Immediate (Fix Today — Security)
+1. **BUG-35** — Add `authGuard()` to `setCustomClaims` endpoint OR remove it entirely — **privilege escalation vulnerability**
+2. **BUG-20/41** — Apply `authGuard()` middleware to ALL routers — the middleware exists and is ready to use
+3. **BUG-36** — Configure `cors()` with explicit allowed origins
+4. **BUG-42** — Create `firestore.rules` with deny-by-default rules — **database completely unprotected**
+5. **BUG-66** — Fix getCollectionSchema: whitelist field names, replace `value: any()` with safe union type — **prototype pollution risk**
+6. ~~**BUG-1, BUG-2 & BUG-29** — Change `{ eventId }` to `{ calendarEventId: eventId }` — 3 one-line fixes~~ — ✅ **Done 2026-08-30**
 
 ### Urgent (This Week)
-2. **BUG-3** — Fix session persistence on page reload (likely need to rehydrate auth state from localStorage/cookies on app mount)
-3. **BUG-4** — Fix language toggle to not trigger full page reload/redirect
-4. **BUG-7** — Route Mark Done/No-Show through server API for consistency and audit trail
+6. **BUG-39/3** — Add `onAuthStateChanged()` listener to sync Firebase auth → Zustand; fix session persistence
+7. **BUG-48** — Add 401 detection and token refresh retry in API client
+8. **BUG-4** — Replace `window.location.reload()` in language toggle with state-based approach
+9. **BUG-37/7** — Route all client-side Firestore writes through server API (start with calendar status changes)
+10. **BUG-43** — Fix race condition: move overlap check inside Firestore transaction (read from DB, not cache)
 
 ### High Priority (Next Sprint)
-5. **BUG-6** — Debug analytics date filtering logic
-6. **BUG-5** — Fix calendar view switcher dropdown (Radix DropdownMenu click handler)
-7. **BUG-11** — Add `DialogTitle` (or `VisuallyHidden` wrapper) to all dialog components
-8. **BUG-8** — Fix tablet responsive layout for analytics grid
+11. **BUG-45** — Exclude current appointment from overlap check during reschedule
+12. **BUG-46/47** — Use Firebase Storage for logos instead of base64 in Firestore; add file size validation
+13. **BUG-44** — Add timezone field to Business type schema; add timezone picker to Edit Details
+14. **BUG-40/6** — Change analytics filter from `e.created` to `e.start` in `data/services.ts` line 317 (1-line fix)
+15. **BUG-49** — Add React error boundaries (error.tsx) at root and key route segments
+16. **BUG-50** — Add toast notifications for Firestore write failures
+17. **BUG-5** — Fix calendar view switcher dropdown (Radix DropdownMenu click handler)
+18. **BUG-11** — Add `DialogTitle` (or `VisuallyHidden` wrapper) to all dialog components
+19. **BUG-8/28** — Fix tablet analytics and mobile appointment button overflow
+20. **BUG-30** — Add "My Appointments" link to customer booking page navbar
+21. **BUG-31** — Fix sidebar active page highlight to track current route
 
 ### Medium Priority
-9. **BUG-15** — Implement actual accessibility mode features or remove the toggle
-10. **BUG-9** — Fix incorrect "total reviews" label on No-Show Rate card
-11. **BUG-12** — Add toast notification for copy link action
-12. **BUG-10** — Show actual address or hide field if empty
-13. **BUG-13** — Fix billing currency data display
-14. **BUG-14** — Implement marketplace page or remove the link
+22. **BUG-59** — Add helmet.js for security headers (1-line install + use)
+23. **BUG-60** — Add login brute-force protection (stricter rate limit on `/actions/login`)
+24. **BUG-52** — Add start < end validation to appointment schema
+25. **BUG-51** — Fix cross-timezone date slot assignment
+26. **BUG-61** — Sync Audit type definitions between client and server
+27. **BUG-62** — Add `description` field to server Business interface
+28. **BUG-67** — Add cross-field Zod validations (end > start, to >= from)
+29. **BUG-68** — Standardize ID min length to min(5)
+30. **BUG-15** — Implement actual accessibility mode features or remove the toggle
+25. **BUG-9** — Fix incorrect "total reviews" label on No-Show Rate card
+26. **BUG-12** — Add toast notification for copy link action
+27. **BUG-10** — Show actual address or hide field if empty
+28. **BUG-13** — Fix billing currency data display
+29. **BUG-14** — Implement marketplace page or remove the link
 
 ### Low Priority
-15. **BUG-16** — Add "All time" option to analytics filter
-16. **BUG-17** — Remove console.log statements from production code
-17. **BUG-18** — Add `loading="eager"` to LCP logo image
-18. **BUG-19** — Add distinguishing info to duplicate service names
+30. **BUG-54** — Replace moment.js with date-fns (~70KB savings)
+31. **BUG-55** — Remove unused `motion` package
+32. **BUG-56** — Add dynamic imports for CalendarComponent, analytics, BookingInterface
+33. **BUG-57** — Consolidate icon libraries (replace 3 Remixicon icons with lucide)
+34. **BUG-58** — Integrate error tracking service (Sentry)
+35. **BUG-16** — Add "All time" option to analytics filter
+36. **BUG-17** — Remove console.log statements from production code
+37. **BUG-18** — Add `loading="eager"` to LCP logo image
+38. **BUG-32** — Add `aria-label` to theme toggle button
+39. **BUG-33** — Implement auto-expiry for past appointments
+40. **BUG-34** — Fix API error logging (serialize error objects, deduplicate getBusiness calls)
+41. **BUG-38** — Add title validation to calendar new event form
+42. **BUG-63** — Add setTimeout cleanup in QuickActionsSection and BookingInterface
+43. **BUG-64** — Consider Redis-based rate limiter for multi-instance scaling
+44. **BUG-65** — Set explicit express.json() body size limit
+45. **BUG-69** — Add min length and regex to phone fields
+46. **BUG-70** — Add .url() validation to logoUrl field
