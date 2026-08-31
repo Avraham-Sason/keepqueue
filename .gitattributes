@@ -1,0 +1,19 @@
+# Production runs on Linux while this repo is authored on Windows. A shell script that reaches
+# the host with CRLF fails as `#!/usr/bin/env bash\r: bad interpreter`, and a systemd unit turns
+# `PORT=9000` into `PORT=9000\r`. Pin them to LF regardless of anyone's core.autocrlf setting.
+*.sh            text eol=lf
+*.service       text eol=lf
+*.rules         text eol=lf
+Dockerfile      text eol=lf
+
+# Stored LF, but core.autocrlf=true on a Windows clone rewrites every file git touches — a
+# branch switch is enough — and the build then differs from what was committed.
+*.ts            text eol=lf
+*.tsx           text eol=lf
+*.js            text eol=lf
+*.mjs           text eol=lf
+*.json          text eol=lf
+*.md            text eol=lf
+*.yaml          text eol=lf
+*.yml           text eol=lf
+*.css           text eol=lf
