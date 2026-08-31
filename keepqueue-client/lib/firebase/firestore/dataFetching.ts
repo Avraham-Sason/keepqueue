@@ -161,6 +161,6 @@ export const addAuditRecord = async (action: string, entity: string, details: St
         });
         return data;
     } catch (error) {
-        console.log(error);
+        console.error(error);
     }
 };

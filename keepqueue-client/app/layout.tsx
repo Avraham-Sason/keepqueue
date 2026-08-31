@@ -19,6 +19,7 @@ export async function generateMetadata(): Promise<Metadata> {
     
     return {
         metadataBase: new URL("https://keepqueue.com"),
+        alternates: { canonical: "/" },
         title,
         description,
         keywords: ["זימון תורים", "מערכת לזימון תורים", "ניהול תורים", "KeepQueue"],
@@ -48,6 +49,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
     const lang = await getServerLanguage();
+    const t = await getServerTranslation();
     return (
         <html lang={lang} dir={lang === "he" ? "rtl" : "ltr"} suppressHydrationWarning>
             <body className={cn(inter.className, "w-screen min-h-dvh")} suppressHydrationWarning>
@@ -57,7 +59,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 <GlobalConfig />
                 <QueryProvider>
                     <ThemeProvider  attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-                        {children}
+                        <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:m-2 focus:rounded focus:bg-background focus:px-4 focus:py-2">
+                            {t("skipToMain")}
+                        </a>
+                        <div id="main-content">{children}</div>
                     </ThemeProvider>
                 </QueryProvider>
             </body>

@@ -90,6 +90,7 @@ export function SignInForm({ type, disableRedirect = false, onSuccess }: SignInF
                         <Input
                             id="email"
                             type="email"
+                            maxLength={254}
                             placeholder="your@email.com"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}

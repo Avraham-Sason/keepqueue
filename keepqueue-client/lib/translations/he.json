@@ -20,7 +20,6 @@
     "add": "הוסף",
     "addToGoogleCalendar": "הוסף ליומן Google",
     "close": "סגור",
-
     "welcome": "ברוכים הבאים",
     "todayAppointments": "תורים היום",
     "totalCustomers": "סך הלקוחות",
@@ -29,7 +28,6 @@
     "recentAppointments": "תורים אחרונים",
     "upcomingAppointments": "תורים קרובים",
     "quickActions": "פעולות מהירות",
-
     "appointmentsTitle": "ניהול תורים",
     "pastAppointments": "תורים עבר",
     "customerName": "שם הלקוח",
@@ -42,7 +40,6 @@
     "pending": "ממתין",
     "cancelled": "בוטל",
     "completed": "הושלם",
-
     "customersTitle": "ניהול לקוחות",
     "addCustomer": "הוסף לקוח",
     "phone": "טלפון",
@@ -57,19 +54,16 @@
     "noCustomerAppointments": "אין תורים ללקוח הזה עדיין.",
     "blockCustomerWarning": "הלקוח לא יוכל לקבוע תורים חדשים בעסק הזה.",
     "unblockCustomerWarning": "אפשר ללקוח לחזור ולקבוע תורים בעסק הזה.",
-
     "servicesTitle": "ניהול שירותים",
     "addService": "הוסף שירות",
     "serviceName": "שם השירות",
     "duration": "משך זמן",
     "price": "מחיר",
     "description": "תיאור",
-
     "searchPlaceholder": "חפש תורים, לקוחות...",
     "newAppointmentBooked": "תור חדש נקבע",
     "viewAllNotifications": "צפה בכל ההתראות",
     "totalAppointments": "סך התורים",
-
     "errorUnauthorizedUser": "שגיאה: משתמש לא מורשה",
     "hello": "שלום",
     "welcomeBusinessAdminPanelOf": "ברוך הבא לפאנל הניהול של",
@@ -149,7 +143,6 @@
     "noFavoriteBusinesses": "אין עסקים מועדפים",
     "addFavoritesInMarketplace": "הוסף עסקים למועדפים בשוק",
     "bookAppointment": "קבע תור",
-
     "featuresHeading": "כל מה שאתה צריך לניהול תורים",
     "featuresSubheading": "מהזמנה ועד אנליטיקה, Keepqueue מספק את כל הכלים להצמחת עסק היופי שלך",
     "heroMain": "ניהול תורים חכם",
@@ -160,12 +153,10 @@
     "navTestimonials": "המלצות",
     "navMarketplace": "חיפוש עסקים",
     "ctaStartFreeTrial": "התחל ניסיון חינם",
-
     "newsletterReady": "מוכן להתחיל?",
     "newsletterJoin": "הצטרף לאלפי בעלי עסקים שכבר משתמשים ב-Keepqueue",
     "newsletterEmailPlaceholder": "הכנס את המייל שלך",
     "startNow": "התחל עכשיו",
-
     "footerProduct": "מוצר",
     "footerSupport": "תמיכה",
     "footerCompany": "חברה",
@@ -182,13 +173,11 @@
     "termsOfUse": "תנאי שימוש",
     "rightsReserved": "כל הזכויות שמורות.",
     "toggleTheme": "החלפת ערכת נושא",
-
     "statusConfirmed": "מאושר",
     "statusPending": "ממתין לאישור",
     "statusCancelled": "בוטל",
     "statusCompleted": "הושלם",
     "statusNoShow": "לא הגיע",
-
     "errorSignIn": "שגיאה בהתחברות",
     "authErrorTypeMismatch": "המשתמש אינו מורשה לאזור זה",
     "authErrorInvalidCredentials": "כתובת מייל או סיסמה שגויים",
@@ -202,7 +191,6 @@
     "noAccount": "אין לך חשבון?",
     "signUpHere": "הירשם כאן",
     "testAccounts": "חשבונות לבדיקה",
-
     "backToHome": "חזור לדף הבית",
     "businessSignUpTitle": "הרשמת עסק חדש",
     "businessSignUpDescription": "הצטרף ל-Keepqueue ונהל את העסק שלך בקלות",
@@ -226,7 +214,6 @@
     "haveRegisteredBusiness": "יש לך כבר עסק רשום?",
     "signInHere": "התחבר כאן",
     "customerLoginCta": "לקוח? כניסה לאזור הלקוחות",
-
     "bookingBackToSearch": "חזור לחיפוש",
     "openNow": "פתוח עכשיו",
     "selectService": "בחר שירות",
@@ -264,7 +251,6 @@
     "bookingSuccessDescription": "התור שלך אושר ונשלח אישור לדוא״ל",
     "appointmentDetails": "פרטי התור",
     "myAppointments": "התורים שלי",
-
     "filter": "סנן",
     "popular": "פופולרי",
     "servicesLabel": "השירותים:",
@@ -425,7 +411,6 @@
     "emailCannotBeChanged": "אימייל לא ניתן לשינוי כאן",
     "pleaseSelectImage": "אנא בחר קובץ תמונה",
     "editDetails": "עריכת פרטים",
-
     "signUpTitle": "יצירת חשבון",
     "signUpCustomerTitle": "הרשמת לקוח",
     "signUpCustomerDescription": "צור חשבון כדי לקבוע תורים",
@@ -440,7 +425,6 @@
     "signUpError": "לא הצלחנו ליצור חשבון. אנא נסה שוב.",
     "emailAlreadyInUse": "האימייל הזה כבר רשום",
     "weakPassword": "הסיסמה חייבת להיות לפחות 6 תווים",
-
     "forgotPassword": "שכחת סיסמה?",
     "resetPasswordTitle": "איפוס סיסמה",
     "resetPasswordDescription": "הכנס את האימייל שלך ונשלח לך קישור לאיפוס",
@@ -449,12 +433,10 @@
     "resetLinkSent": "קישור איפוס נשלח! בדוק את האימייל שלך.",
     "resetLinkError": "לא הצלחנו לשלוח קישור איפוס. אנא נסה שוב.",
     "backToSignIn": "חזרה להתחברות",
-
     "bookingSuccessPageTitle": "ההזמנה אושרה!",
     "bookingSuccessPageDescription": "התור שלך נקבע בהצלחה",
     "bookAnotherAppointment": "קבע תור נוסף",
     "viewMyAppointments": "צפה בתורים שלי",
-
     "allStatuses": "כל הסטטוסים",
     "allServices": "כל השירותים",
     "searchAppointments": "חיפוש תורים...",
@@ -475,7 +457,6 @@
     "statusCANCELLED": "בוטל",
     "statusNO_SHOW": "לא הופיע",
     "statusDONE": "הושלם",
-
     "reviewsTitle": "ביקורות ודירוגים",
     "manageAllReviews": "נהל ביקורות ודירוגים של לקוחות",
     "averageRating": "דירוג ממוצע",
@@ -491,7 +472,6 @@
     "reviewVisible": "ביקורת גלויה",
     "stars": "כוכבים",
     "anonymous": "אנונימי",
-
     "analyticsTitle": "דוחות וניתוח",
     "manageAnalytics": "עקוב אחר ביצועי העסק שלך",
     "totalBookings": "סה״כ הזמנות",
@@ -505,7 +485,6 @@
     "last90Days": "90 ימים אחרונים",
     "bookings": "הזמנות",
     "noDataAvailable": "אין נתונים זמינים",
-
     "staffTitle": "ניהול צוות",
     "manageAllStaff": "נהל את חברי הצוות שלך",
     "addStaff": "הוסף עובד",
@@ -525,13 +504,11 @@
     "staffNotes": "הערות",
     "staffServices": "שירותים מוקצים",
     "staff": "צוות",
-
     "shareBookingLink": "שתף קישור הזמנה",
     "bookingLinkCopied": "קישור ההזמנה הועתק ללוח!",
     "copyLink": "העתק קישור",
     "shareVia": "שתף דרך",
     "yourBookingPage": "דף ההזמנות שלך",
-
     "rescheduleAppointment": "שנה מועד",
     "cancelMyAppointment": "בטל את התור שלי",
     "cancelAppointmentCustomerConfirm": "האם אתה בטוח שברצונך לבטל תור זה?",
@@ -539,7 +516,6 @@
     "noPastAppointments": "אין תורים קודמים",
     "noUpcomingAppointmentsCustomer": "אין תורים קרובים",
     "bookNewAppointment": "קבע תור חדש",
-
     "joinWaitlist": "הצטרף לרשימת המתנה",
     "leaveWaitlist": "עזוב רשימת המתנה",
     "waitlistTitle": "הצטרף לרשימת המתנה",
@@ -550,9 +526,11 @@
     "waitlistStatus": "סטטוס רשימת המתנה",
     "onWaitlist": "ברשימת המתנה",
     "preferredTimeWindow": "חלון זמן מועדף",
-
     "blockedCustomerBookingWarning": "לקוח זה חסום ואינו יכול לקבוע תורים",
     "customerNoShowCount": "אי הופעות",
     "customerCancelRate": "אחוז ביטולים",
-    "flaggedCustomerWarning": "מסומן: אחוז גבוה של אי הופעות או ביטולים"
+    "flaggedCustomerWarning": "מסומן: אחוז גבוה של אי הופעות או ביטולים",
+    "hour": "שעה",
+    "minute": "דקה",
+    "skipToMain": "דלג לתוכן הראשי"
 }

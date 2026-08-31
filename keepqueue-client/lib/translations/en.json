@@ -20,7 +20,6 @@
     "add": "Add",
     "addToGoogleCalendar": "Add to Google Calendar",
     "close": "Close",
-
     "welcome": "Welcome",
     "todayAppointments": "Today's Appointments",
     "totalCustomers": "Total Customers",
@@ -29,7 +28,6 @@
     "recentAppointments": "Recent Appointments",
     "upcomingAppointments": "Upcoming Appointments",
     "quickActions": "Quick Actions",
-
     "appointmentsTitle": "Appointments Management",
     "pastAppointments": "Past Appointments",
     "customerName": "Customer Name",
@@ -42,7 +40,6 @@
     "pending": "Pending",
     "cancelled": "Cancelled",
     "completed": "Completed",
-
     "customersTitle": "Customer Management",
     "addCustomer": "Add Customer",
     "phone": "Phone",
@@ -57,19 +54,16 @@
     "noCustomerAppointments": "This customer has no appointments yet.",
     "blockCustomerWarning": "The customer won't be able to book new appointments for this business.",
     "unblockCustomerWarning": "Allow this customer to book appointments with this business again.",
-
     "servicesTitle": "Services Management",
     "addService": "Add Service",
     "serviceName": "Service Name",
     "duration": "Duration",
     "price": "Price",
     "description": "Description",
-
     "searchPlaceholder": "Search appointments, customers...",
     "newAppointmentBooked": "New appointment booked",
     "viewAllNotifications": "View all notifications",
     "totalAppointments": "Total Appointments",
-
     "errorUnauthorizedUser": "Error: Unauthorized user",
     "hello": "Hello",
     "welcomeBusinessAdminPanelOf": "Welcome to the admin panel of",
@@ -149,7 +143,6 @@
     "noFavoriteBusinesses": "No favorite businesses",
     "addFavoritesInMarketplace": "Add favorites in the marketplace",
     "bookAppointment": "Book appointment",
-
     "featuresHeading": "Everything you need for appointment management",
     "featuresSubheading": "From booking to analytics, Keepqueue provides all the tools to grow your beauty business",
     "heroMain": "Smart appointment management",
@@ -160,12 +153,10 @@
     "navTestimonials": "Testimonials",
     "navMarketplace": "Marketplace",
     "ctaStartFreeTrial": "Start free trial",
-
     "newsletterReady": "Ready to get started?",
     "newsletterJoin": "Join thousands of business owners already using Keepqueue",
     "newsletterEmailPlaceholder": "Enter your email",
     "startNow": "Start now",
-
     "footerProduct": "Product",
     "footerSupport": "Support",
     "footerCompany": "Company",
@@ -182,13 +173,11 @@
     "termsOfUse": "Terms of Use",
     "rightsReserved": "All rights reserved.",
     "toggleTheme": "Toggle theme",
-
     "statusConfirmed": "Confirmed",
     "statusPending": "Pending approval",
     "statusCancelled": "Cancelled",
     "statusCompleted": "Completed",
     "statusNoShow": "No-show",
-
     "errorSignIn": "Sign in error",
     "authErrorTypeMismatch": "This user cannot sign in to this area",
     "authErrorInvalidCredentials": "Invalid email or password",
@@ -202,7 +191,6 @@
     "noAccount": "Don't have an account?",
     "signUpHere": "Sign up here",
     "testAccounts": "Test accounts",
-
     "backToHome": "Back to home",
     "businessSignUpTitle": "Register a new business",
     "businessSignUpDescription": "Join Keepqueue and manage your business with ease",
@@ -226,7 +214,6 @@
     "haveRegisteredBusiness": "Already have a registered business?",
     "signInHere": "Sign in here",
     "customerLoginCta": "Customer? Go to customer area",
-
     "bookingBackToSearch": "Back to search",
     "openNow": "Open now",
     "selectService": "Select service",
@@ -264,7 +251,6 @@
     "bookingSuccessDescription": "Your appointment has been confirmed. A confirmation was sent via email.",
     "appointmentDetails": "Appointment details",
     "myAppointments": "My appointments",
-
     "filter": "Filter",
     "popular": "Popular",
     "servicesLabel": "Services:",
@@ -425,7 +411,6 @@
     "emailCannotBeChanged": "Email cannot be changed here",
     "pleaseSelectImage": "Please select an image file",
     "editDetails": "Edit details",
-
     "signUpTitle": "Create Account",
     "signUpCustomerTitle": "Customer Sign Up",
     "signUpCustomerDescription": "Create your account to book appointments",
@@ -440,7 +425,6 @@
     "signUpError": "Could not create account. Please try again.",
     "emailAlreadyInUse": "This email is already registered",
     "weakPassword": "Password must be at least 6 characters",
-
     "forgotPassword": "Forgot password?",
     "resetPasswordTitle": "Reset Password",
     "resetPasswordDescription": "Enter your email and we'll send you a reset link",
@@ -449,12 +433,10 @@
     "resetLinkSent": "Reset link sent! Check your email.",
     "resetLinkError": "Could not send reset link. Please try again.",
     "backToSignIn": "Back to sign in",
-
     "bookingSuccessPageTitle": "Booking Confirmed!",
     "bookingSuccessPageDescription": "Your appointment has been successfully scheduled",
     "bookAnotherAppointment": "Book another appointment",
     "viewMyAppointments": "View my appointments",
-
     "allStatuses": "All statuses",
     "allServices": "All services",
     "searchAppointments": "Search appointments...",
@@ -475,7 +457,6 @@
     "statusCANCELLED": "Cancelled",
     "statusNO_SHOW": "No Show",
     "statusDONE": "Done",
-
     "reviewsTitle": "Reviews & Ratings",
     "manageAllReviews": "Manage customer reviews and ratings",
     "averageRating": "Average Rating",
@@ -491,7 +472,6 @@
     "reviewVisible": "Review visible",
     "stars": "stars",
     "anonymous": "Anonymous",
-
     "analyticsTitle": "Reports & Analytics",
     "manageAnalytics": "Track your business performance",
     "totalBookings": "Total Bookings",
@@ -505,7 +485,6 @@
     "last90Days": "Last 90 days",
     "bookings": "bookings",
     "noDataAvailable": "No data available",
-
     "staffTitle": "Staff Management",
     "manageAllStaff": "Manage your team members",
     "addStaff": "Add staff member",
@@ -525,13 +504,11 @@
     "staffNotes": "Notes",
     "staffServices": "Assigned services",
     "staff": "Staff",
-
     "shareBookingLink": "Share booking link",
     "bookingLinkCopied": "Booking link copied to clipboard!",
     "copyLink": "Copy link",
     "shareVia": "Share via",
     "yourBookingPage": "Your booking page",
-
     "rescheduleAppointment": "Reschedule",
     "cancelMyAppointment": "Cancel my appointment",
     "cancelAppointmentCustomerConfirm": "Are you sure you want to cancel this appointment?",
@@ -539,7 +516,6 @@
     "noPastAppointments": "No past appointments",
     "noUpcomingAppointmentsCustomer": "No upcoming appointments",
     "bookNewAppointment": "Book a new appointment",
-
     "joinWaitlist": "Join waitlist",
     "leaveWaitlist": "Leave waitlist",
     "waitlistTitle": "Join the Waitlist",
@@ -550,9 +526,11 @@
     "waitlistStatus": "Waitlist status",
     "onWaitlist": "On waitlist",
     "preferredTimeWindow": "Preferred time window",
-
     "blockedCustomerBookingWarning": "This customer is blocked and cannot book appointments",
     "customerNoShowCount": "No-shows",
     "customerCancelRate": "Cancel rate",
-    "flaggedCustomerWarning": "Flagged: high no-show or cancellation rate"
+    "flaggedCustomerWarning": "Flagged: high no-show or cancellation rate",
+    "hour": "hour",
+    "minute": "minute",
+    "skipToMain": "Skip to main content"
 }

@@ -149,6 +149,7 @@ export function SignUpForm({ type }: SignUpFormProps) {
                         <Input
                             id="email"
                             type="email"
+                            maxLength={254}
                             placeholder="your@email.com"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}

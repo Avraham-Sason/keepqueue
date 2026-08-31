@@ -370,7 +370,7 @@ export function SiteFooter() {
                         </Link>
                     </div>
                     <div className="text-sm text-muted-foreground">
-                        © 2024 {t("brandName")}. {t("rightsReserved")}
+                        © {new Date().getFullYear()} {t("brandName")}. {t("rightsReserved")}
                     </div>
                 </div>
             </div>

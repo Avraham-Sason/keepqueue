@@ -2,73 +2,12 @@
 
 **Date:** March 23–27, 2026 (8 sessions)
 **Version:** 1.0.5
-**Total bugs: 93** — Critical: 10 | High: 16 | Medium: 39 | Low: 28
-**Status: 27 fixed · 66 open** — fixed 2026-08-30: BUG-1, BUG-2, BUG-29 · fixed 2026-08-31: BUG-3, BUG-4, BUG-6, BUG-21, BUG-36, BUG-39, BUG-40, BUG-45, BUG-48, BUG-52, BUG-59, BUG-66, BUG-67, BUG-71, BUG-79, BUG-86, BUG-92 (client sent `eventId`, server Zod schema expects `calendarEventId`; verified with `npx tsc --noEmit` — no new type errors)
+**Open bugs: 56**
+**Closed and removed: 37** — the entries were deleted once each fix was verified; they remain in this file's git history.
 
 ---
 
 ## Critical (Blocks Core Functionality)
-
-### BUG-1: Confirm Appointment API — Field Name Mismatch (400 Error)
-- **Status:** Fixed 2026-08-30 — `helpers.ts:5` now sends `{ calendarEventId: eventId }`
-- **Severity:** Critical
-- **Location:** `keepqueue-client/app/business/appointments/helpers.ts`
-- **Steps to reproduce:**
-  1. Navigate to Appointments page
-  2. Click "Confirm" on any pending appointment
-- **Expected:** Appointment status changes to confirmed
-- **Actual:** 400 Bad Request error
-- **Root cause:** `confirmAppointment()` sends `{ eventId }` but the server Zod schema (`keepqueue-server/src/actions/businesses/appointments/schemes.ts`) expects `{ calendarEventId }`
-- **Fix:** Change `{ eventId }` to `{ calendarEventId: eventId }` in `helpers.ts`
-- **Impact:** No appointment can be confirmed through the UI
-
----
-
-### BUG-2: Cancel Appointment API — Field Name Mismatch (400 Error)
-- **Status:** Fixed 2026-08-30 — `helpers.ts:9` now sends `{ calendarEventId: eventId }`
-- **Severity:** Critical
-- **Location:** `keepqueue-client/app/business/appointments/helpers.ts`
-- **Steps to reproduce:**
-  1. Navigate to Appointments page
-  2. Click "Cancel" on any appointment
-- **Expected:** Appointment is cancelled
-- **Actual:** 400 Bad Request error
-- **Root cause:** Same as BUG-1 — `cancelAppointment()` sends `{ eventId }` instead of `{ calendarEventId: eventId }`
-- **Fix:** Change `{ eventId }` to `{ calendarEventId: eventId }` in `helpers.ts`
-- **Impact:** No appointment can be cancelled through the UI
-
----
-
-### BUG-3: Direct URL Navigation Loses Session
-- **Status:** Fixed 2026-08-31 — `onAuthStateChanged` now syncs Firebase auth into the persisted store, and `apiCall` waits for that restore before reading the token
-- **Severity:** Critical
-- **Location:** Auth/session persistence layer
-- **Steps to reproduce:**
-  1. Sign in as business user
-  2. Navigate to dashboard successfully
-  3. Type `/business/calendar` (or any protected route) directly in the browser URL bar
-- **Expected:** Page loads with authenticated session
-- **Actual:** Redirects to sign-in page — session token lost on full page load
-- **Notes:** SPA navigation via sidebar works fine; only full page loads/refreshes lose the session
-- **Impact:** Users cannot bookmark, refresh, or share any admin URL
-
----
-
-## High Severity
-
-### BUG-4: Language Toggle Causes Session Loss
-- **Status:** Fixed 2026-08-31 — same root cause as BUG-3 — a reload no longer drops the session now that Firebase auth is the source of truth
-- **Severity:** High
-- **Location:** Language switching mechanism
-- **Steps to reproduce:**
-  1. Sign in as business user
-  2. Open sidebar
-  3. Switch language from EN to HE (or vice versa)
-- **Expected:** Language changes, user stays logged in
-- **Actual:** Redirects to sign-in page — session lost
-- **Impact:** Users are logged out every time they change language
-
----
 
 ### BUG-5: Calendar View Switcher Dropdown Doesn't Open
 - **Severity:** High
@@ -80,34 +19,6 @@
 - **Actual:** Nothing happens — dropdown menu items never render in DOM
 - **Workaround:** Keyboard shortcuts M, W, D, A work correctly
 - **Impact:** Users who don't know keyboard shortcuts cannot switch calendar views
-
----
-
-### BUG-6: Analytics Shows 0 Data Despite Existing Appointments
-- **Status:** Fixed 2026-08-31 — analytics filtered on `created`; it now filters on `start`, bounded by now — see BUG-40
-- **Severity:** High
-- **Location:** Analytics page data filtering/aggregation logic
-- **Steps to reproduce:**
-  1. Navigate to Analytics page
-  2. Select "Last 90 days" filter
-  3. Note that appointments exist within this date range
-- **Expected:** Metrics reflect actual appointment data
-- **Actual:** All metrics show 0 (Total Bookings: 0, Revenue: 0, etc.)
-- **Possible cause:** Date filtering/comparison logic mismatch, or cache data not being properly queried
-- **Impact:** Analytics page is completely unusable
-
----
-
-### BUG-7: Mark No-Show / Mark Done Bypass Server API
-- **Status:** Fixed 2026-08-31 — no-show and done now POST to `/actions/businesses/appointments/updateStatus`, which authGuard and the ownership check both cover, instead of writing to Firestore from the browser
-- **Severity:** High
-- **Location:** `keepqueue-client/app/business/appointments/hooks.tsx`
-- **Steps to reproduce:**
-  1. Click "Mark No-Show" or "Mark Done" on any appointment
-  2. Observe that the action succeeds (unlike Confirm/Cancel which fail)
-- **Expected:** Status update goes through server API with validation
-- **Actual:** Direct Firestore write via `setDocument("calendar", eventId, { status: "NO_SHOW" })` — bypasses server entirely
-- **Impact:** No server-side validation, no logging, no audit trail for these status changes; inconsistent with Confirm/Cancel architecture
 
 ---
 
@@ -225,20 +136,6 @@
 
 ---
 
-### BUG-17: Console.log Statements Left in Production Code
-- **Severity:** Low
-- **Location:** Multiple components
-- **Steps to reproduce:**
-  1. Open browser console on any page
-- **Actual output:**
-  - `⚡ fetching business [object Object]`
-  - `currentBusiness [object Object]`
-- **Notes:** `[object Object]` indicates objects are being logged via string concatenation instead of passing as separate arguments
-- **Fix:** Remove all `console.log` calls or use the `logger` utility
-- **Impact:** Noisy console output; minor performance overhead
-
----
-
 ### BUG-18: LCP Image Missing `loading="eager"`
 - **Severity:** Low
 - **Location:** Logo image component (`/logo.png`)
@@ -264,46 +161,6 @@
 ---
 
 ## Critical (Added in Session 2)
-
-### BUG-20: API Endpoints Have No Authentication Middleware
-- **Status:** Fixed 2026-08-31 — every /actions and /data route now runs `authGuard`, per the approved endpoint classification; only the health checks, getBusiness, getAvailabilityByServiceId, getBusinessReviews and getBusinessRatings stay public because the booking page needs them
-- **Severity:** Critical (Security)
-- **Location:** `keepqueue-server/src/data/router.ts` and all action routers
-- **Steps to reproduce:**
-  1. Open browser console (or use curl/Postman)
-  2. Run: `fetch('http://localhost:9000/data/getBusiness', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({businessId:'GPajiLlPDRwWaJwNvWoz'}) })`
-  3. Observe 200 OK response with full business data — no auth token needed
-- **Affected endpoints (confirmed):**
-  - `POST /data/getBusiness` → 200 (leaks business data)
-  - `POST /data/getBusinessCustomers` → 200 (leaks customer PII)
-  - `POST /data/getUserById` → 200 (leaks user data)
-  - `POST /actions/businesses/appointments/confirm` → 500 (crashes, but not 401)
-  - `POST /actions/businesses/appointments/cancel` → 500 (crashes, but not 401)
-- **Root cause:** `dataRouter` only applies `validateBody()` middleware — no `authenticate` or `verifyIdToken` middleware is applied to any route
-- **Fix:** Add authentication middleware to all `/data/*` and `/actions/*` routes: `dataRouter.use(authenticateMiddleware)` before route definitions
-- **Impact:** Any unauthenticated user can access all business data, customer PII (names, emails, phones), and user information. Action endpoints crash instead of returning 401.
-
----
-
-## High (Added in Session 2)
-
-### BUG-21: Past Time Slots Bookable for Today
-- **Status:** Fixed 2026-08-31 — `computeBusinessAvailability` clamps every produced interval to no earlier than now, so today's elapsed slots are not offered
-- **Severity:** High
-- **Location:** `keepqueue-client/components/BookingInterface/` — date/time step
-- **Steps to reproduce:**
-  1. Go to public booking page
-  2. Select any service, click "Continue to date and time"
-  3. Select "Today"
-  4. Observe time slots like 08:00, 08:30, 09:00 are all enabled and clickable
-- **Expected:** Past time slots for today should be disabled/greyed out
-- **Actual:** All time slots are fully clickable regardless of current time — `disabled: false, opacity: 1`
-- **Fix:** Filter available time slots to exclude times before `new Date()` when selected date is today
-- **Impact:** Customers can book appointments in the past
-
----
-
-## Medium (Added in Session 2)
 
 ### BUG-22: Browser Back Button Exits Booking Wizard
 - **Severity:** Medium
@@ -346,32 +203,6 @@
 
 ## Low (Added in Session 2)
 
-### BUG-25: Duration Grammar Error — "1 hours" Instead of "1 hour"
-- **Severity:** Low
-- **Location:** Services page — duration display
-- **Steps to reproduce:**
-  1. Navigate to Services
-  2. Look at Personal Training card (90 minutes)
-- **Expected:** "Duration: 1 hour 30 minutes"
-- **Actual:** "Duration: 1 hours 30 minutes"
-- **Fix:** Use singular "hour" when value is 1
-- **Impact:** Grammar error visible to all users
-
----
-
-### BUG-26: Currency Shows "INS" Instead of "ILS"
-- **Severity:** Low
-- **Location:** Services page — price display
-- **Steps to reproduce:**
-  1. Navigate to Services
-  2. Look at any service price
-- **Expected:** "Price: 60 ILS" or "Price: ₪60"
-- **Actual:** "Price: 60 INS" — invalid currency code
-- **Fix:** Correct the currency code from "INS" to "ILS"
-- **Impact:** Incorrect currency display
-
----
-
 ### BUG-27: Working Hours Section Has Duplicate Header
 - **Severity:** Low
 - **Location:** Edit Business Details page — Working hours section
@@ -400,22 +231,6 @@
 
 ## Medium (Added in Session 3)
 
-### BUG-29: Customer Cancel Appointment — Same Field Name Mismatch as BUG-1/BUG-2
-- **Status:** Fixed 2026-08-30 — `page.tsx:86` now sends `{ calendarEventId: eventId }`
-- **Severity:** Medium
-- **Location:** `keepqueue-client/app/customer/dashboard/page.tsx` line 86
-- **Steps to reproduce:**
-  1. Sign in as customer
-  2. Navigate to customer dashboard
-  3. Click "Cancel" on any upcoming appointment
-- **Expected:** Appointment is cancelled
-- **Actual:** 400 Bad Request error (same root cause as BUG-1/BUG-2)
-- **Root cause:** `handleCancel()` sends `{ eventId }` but server schema expects `{ calendarEventId }`
-- **Fix:** Change `{ eventId }` to `{ calendarEventId: eventId }` on line 86
-- **Impact:** Customer cannot cancel their own appointments
-
----
-
 ### BUG-30: Customer Dashboard Unreachable — No Navigation Link
 - **Severity:** Medium
 - **Location:** Customer-facing UI (public booking page navbar)
@@ -443,19 +258,6 @@
 
 ## Low (Added in Session 3)
 
-### BUG-32: Theme Toggle Button Missing aria-label
-- **Severity:** Low
-- **Location:** Sidebar — theme toggle button
-- **Steps to reproduce:**
-  1. Open sidebar
-  2. Inspect the theme toggle button
-- **Expected:** Button has `aria-label="Toggle theme"` or similar
-- **Actual:** Button has no text content and no `aria-label` — screen readers cannot identify its purpose
-- **Fix:** Add `aria-label="Toggle theme"` to the theme toggle button
-- **Impact:** Accessibility — screen reader users cannot identify the theme toggle
-
----
-
 ### BUG-33: Past Appointments Still Show "Booked" Status — No Auto-Expiry
 - **Severity:** Low
 - **Location:** Appointments / Calendar event data
@@ -482,36 +284,6 @@
 ---
 
 ## Critical (Added in Session 4)
-
-### BUG-35: setCustomClaims Endpoint Unauthenticated — Privilege Escalation
-- **Status:** Fixed 2026-08-31 — the endpoint had no caller anywhere in the client and handed out claims to anyone who asked — route and handler deleted
-- **Severity:** Critical (Security)
-- **Location:** `keepqueue-server/src/actions/router.ts` line 10, `keepqueue-server/src/actions/services.ts` lines 52-66
-- **Steps to reproduce:**
-  1. Send POST to `/actions/setCustomClaims` with `{ userId: "<any-user-id>", claims: { role: "business", user_type: "business" } }`
-  2. No authentication token needed
-- **Expected:** 401 Unauthorized
-- **Actual:** 200 OK — Firebase custom claims are set, escalating the user's role
-- **Root cause:** The endpoint has no `authGuard()` middleware and accepts arbitrary `userId` and `claims`
-- **Impact:** Any unauthenticated user can escalate any user's privileges to business owner or any role. This is a **critical privilege escalation vulnerability**.
-- **Fix:** Add `authGuard("business")` middleware and restrict claims that can be set
-
----
-
-### BUG-36: CORS Allows All Origins in Production
-- **Status:** Fixed 2026-08-31 — CORS now allows only the configured origins (`allowed_origins` env, defaulting to keepqueue.com + localhost)
-- **Severity:** Critical (Security)
-- **Location:** `keepqueue-server/src/helpers/index.ts` line 38
-- **Steps to reproduce:**
-  1. Inspect `app.use(cors())` — no configuration object passed
-- **Expected:** CORS restricted to known origins (e.g., `keepqueue.com`, `localhost:3000`)
-- **Actual:** `cors()` with no arguments allows requests from ANY origin
-- **Impact:** Any website can make API calls to the Keepqueue server, enabling CSRF-like attacks and data exfiltration. Combined with BUG-20 (no auth), any website can read all business/customer data.
-- **Fix:** Configure CORS with allowed origins: `cors({ origin: ['https://keepqueue.com', 'http://localhost:3000'] })`
-
----
-
-## High (Added in Session 4)
 
 ### BUG-37: Massive Client-Side Firestore Bypass — 7 Collections Written Directly
 - **Severity:** High (Architecture/Security)
@@ -555,58 +327,6 @@
 
 ---
 
-### BUG-39: No onAuthStateChanged Listener — Root Cause of BUG-3 and BUG-4
-- **Status:** Fixed 2026-08-31 — added the missing `onAuthStateChanged` listener; a signed-out Firebase session now clears the persisted store
-- **Severity:** Medium (Architecture)
-- **Location:** `keepqueue-client/lib/store/authStore.ts`, `keepqueue-client/lib/firebase/connect.ts`
-- **Description:** The app has **no `onAuthStateChanged()` listener** from Firebase. Auth state is stored in Zustand (persisted to localStorage), but never revalidated against Firebase's actual session state.
-- **Root cause of BUG-3:** On full page load, Zustand rehydrates asynchronously. Components render before rehydration completes, see `user === null`, and show loading/redirect.
-- **Root cause of BUG-4:** Language toggle calls `window.location.reload()`, triggering the same rehydration race condition.
-- **Fix:** Add `onAuthStateChanged()` listener in a top-level provider that syncs Firebase auth → Zustand store, and delay rendering protected routes until auth is resolved.
-
----
-
-### BUG-40: Analytics Filters by Created Date Instead of Start Date (BUG-6 Root Cause)
-- **Status:** Fixed 2026-08-31 — the analytics window filters by appointment `start` within [periodStart, now] instead of by `created`
-- **Severity:** Medium
-- **Location:** `keepqueue-server/src/data/services.ts` line 317
-- **Description:** Server-side analytics filters appointments by `e.created.toMillis() >= periodStart` (when appointment was booked) instead of `e.start.toMillis() >= periodStart` (when appointment is scheduled).
-- **Root cause of BUG-6:** Client filters by `e.start`, but server filters by `e.created`. This mismatch means appointments booked for future dates may not appear in analytics, and the server calculation can return 0 even when appointments exist in the date range.
-- **Fix:** Change line 317 in `services.ts` from `e.created.toMillis() >= periodStart` to `e.start.toMillis() >= periodStart`
-
----
-
-## Low (Added in Session 4)
-
-### BUG-41 (Informational): authGuard Middleware Exists But Is Never Used
-- **Status:** Fixed 2026-08-31 — `authGuard` is now applied; a new ownership layer sits beside it, because authGuard proves account type and not that the caller owns the record
-- **Severity:** Low (Informational — covered by BUG-20)
-- **Location:** `keepqueue-server/src/middlewares/authGuard.ts`
-- **Description:** A fully functional `authGuard` middleware exists with Firebase token verification and role-based access control (business/customer/staff). It is exported from `middlewares/index.ts` but **never applied to any router**. This suggests auth was intended but forgotten during development.
-- **Confirmed:** Checked ALL routers — `dataRouter`, `actionsRouter`, `businessesRouter`, `appointmentsRouter`, `servicesRouter`, `staffRouter`, `customersRouter`, `waitlistRouter`, `reviewsRouter` — none use `authGuard`.
-- **Fix:** Apply `authGuard()` to all routers: e.g., `businessesRouter.use(authGuard("business"))` before route definitions
-
----
-
-## Critical (Added in Session 5)
-
-### BUG-42: No Firestore Security Rules — Database Completely Unprotected
-- **Status:** Fixed 2026-08-31 — `firestore.rules` added at the repo root, deny-by-default with per-collection ownership, and **deployed** to project `keepqueue` on 2026-08-31
-- **Severity:** Critical (Security)
-- **Location:** Project root — missing `firestore.rules` file
-- **Description:** No `firestore.rules`, no `firebase.json`, and no `firestore.indexes.json` exist in the repository. The database relies on default Firestore security rules (likely open). Combined with BUG-37 (12 client files writing directly to 7 collections), any authenticated Firebase user can read/write any collection.
-- **Specific risks:**
-  - Any user can modify another user's `blockedByBusinessIds` (customers/hooks.tsx)
-  - Any user can mark ANY appointment as NO_SHOW or DONE (appointments/hooks.tsx)
-  - Any user can flag/unflag ANY review (reviews/Reviews.tsx)
-  - Any user can edit ANY business details (editDetails/hooks.tsx)
-  - Any user can create waitlist entries for any business/service/user (WaitlistForm.tsx)
-  - Client can write false audit records to "audit" collection (dataFetching.ts)
-- **Fix:** Create `firestore.rules` with deny-by-default rules; restrict each collection to owner/role-based access
-- **Impact:** Complete data integrity compromise — any client can modify any data
-
----
-
 ### BUG-43: Race Condition in Appointment Overlap Detection
 - **Severity:** Critical
 - **Location:** `keepqueue-server/src/actions/businesses/appointments/services.ts` lines 21-47
@@ -636,32 +356,6 @@
 
 ---
 
-### BUG-45: Reschedule Detects Own Appointment as Overlap Conflict
-- **Status:** Fixed 2026-08-31 — `hasCalendarOverlapInCache` takes an `excludeEventId`; reschedule passes its own id so an appointment no longer collides with itself
-- **Severity:** High
-- **Location:** `keepqueue-server/src/actions/businesses/appointments/services.ts` line 103
-- **Description:** When rescheduling appointment A, `hasCalendarOverlapInCache()` checks ALL events in cache including A itself (which still has its old time). If rescheduling to the same or overlapping time slot, the function returns "Slot already booked" — a false positive.
-- **Example:** Reschedule appointment (10:00-11:00) to (10:15-11:15) → finds itself as conflict → rejects
-- **Fix:** Pass `calendarEventId` to `hasCalendarOverlapInCache()` and exclude it from the check
-- **Impact:** Rescheduling may fail even when the slot is available
-
----
-
-### BUG-46: No File Size Validation on Logo Upload — Firestore 1MB Limit Risk
-- **Status:** Fixed 2026-08-31 — `uploadFileToStorage` rejects anything over 5MB before it reaches Storage, with a typed `FileTooLargeError`
-- **Severity:** High
-- **Location:** `keepqueue-client/app/business/editDetails/hooks.tsx` lines 271-294
-- **Description:** Logo upload uses `FileReader.readAsDataURL()` to convert image to base64 string, then stores it directly in the Firestore `businesses` document as `logoUrl`. No file size limit, no MIME type server-side validation, no compression. Firestore max document size is 1MB — a large image will exceed this and cause a silent write failure.
-- **Additional issues:**
-  - `accept="image/png,image/jpeg,image/webp"` only enforced browser-side (line 86 in components.tsx)
-  - Server schema (`schemes.ts` line 31): `logoUrl: string().optional()` — accepts any string
-  - Firebase Storage utility (`lib/firebase/storage.ts`) exists but is NOT used for logos
-  - `<Image>` component uses `unoptimized` prop (line 69) — no Next.js optimization
-- **Fix:** Add max file size check (e.g., 2MB); use Firebase Storage instead of base64 in Firestore; add image compression
-- **Impact:** Large image uploads will silently fail; base64 strings bloat Firestore documents
-
----
-
 ### BUG-47: Logo Stored as Base64 in Firestore Instead of Firebase Storage
 - **Severity:** High (Architecture)
 - **Location:** `keepqueue-client/app/business/editDetails/hooks.tsx` line 164
@@ -675,24 +369,6 @@
 - **Impact:** Performance degradation, bandwidth waste, potential data loss on large images
 
 ---
-
-### BUG-48: No 401 Handling — Expired Tokens Cause Generic Errors
-- **Status:** Fixed 2026-08-31 — `apiCall` retries once with a force-refreshed ID token on a 401 before surfacing the error
-- **Severity:** High
-- **Location:** `keepqueue-client/lib/helpers/api.ts` lines 67-82
-- **Description:** The API client does not handle 401 Unauthorized responses specifically. When a Firebase token expires mid-session:
-  - `getIdToken()` is called without `forceRefresh: true` (line 48) — may return a stale cached token
-  - Server's `verifyToken()` throws a generic error (not specifically 401)
-  - Global error handler returns 500 instead of 401 (`middlewares/index.ts` lines 14-20)
-  - Client has no retry logic, no interceptor, no auto-logout on auth failure
-  - No `onIdTokenChanged` listener to proactively refresh tokens
-  - User appears logged-in (Zustand localStorage) but all API calls fail with generic errors
-- **Fix:** Add 401 detection in API client; use axios interceptor to retry with `getIdToken(true)` on 401; add `onIdTokenChanged` listener
-- **Impact:** Users experience cryptic errors after ~1 hour (Firebase token TTL) with no way to recover except manual logout/login
-
----
-
-## Medium (Added in Session 5)
 
 ### BUG-49: No Global React Error Boundary
 - **Severity:** Medium
@@ -726,16 +402,6 @@
 - **Also:** `withinSchedule()` (lines 175-194) uses `moment.utc()` which may incorrectly validate times if the business schedule assumes a different timezone
 - **Fix:** Ensure date grouping uses business timezone, not user timezone, for slot assignment
 - **Impact:** Cross-timezone users may see slots on wrong dates
-
----
-
-### BUG-52: No Validation That Appointment Start < End
-- **Status:** Fixed 2026-08-31 — `createAppointmentSchema` and `rescheduleAppointmentSchema` now `.refine()` that end > start
-- **Severity:** Medium
-- **Location:** `keepqueue-server/src/actions/businesses/appointments/schemes.ts` lines 5-14
-- **Description:** The `createAppointmentSchema` validates that `start` and `end` are positive integers, but does NOT validate that `start < end`. An API request with `start: 2000000000, end: 1000000000` (end before start) would pass validation. Also no check that `start` is in the future.
-- **Fix:** Add `.refine((data) => data.start < data.end, "End must be after start")` to schema
-- **Impact:** Invalid appointments with end-before-start or in-the-past can be created via API
 
 ---
 
@@ -804,16 +470,6 @@
 
 ---
 
-### BUG-59: No helmet.js — Missing Security Headers
-- **Status:** Fixed 2026-08-31 — `helmet()` added ahead of every other middleware; JSON body capped at 1mb
-- **Severity:** Medium (Security)
-- **Location:** `keepqueue-server/src/helpers/index.ts`, `keepqueue-server/package.json`
-- **Description:** No `helmet` middleware or equivalent is installed. The server does not set security headers: Content-Security-Policy, X-Frame-Options, X-XSS-Protection, X-Content-Type-Options, Strict-Transport-Security, etc.
-- **Fix:** `npm install helmet` and add `app.use(helmet())` to middleware stack
-- **Impact:** Vulnerable to clickjacking, MIME sniffing, and other header-based attacks
-
----
-
 ### BUG-60: No Login Brute-Force Protection — No Slowdown on Failed Auth
 - **Severity:** Medium (Security)
 - **Location:** `keepqueue-server/src/actions/services.ts` (SLogin), `keepqueue-server/src/actions/router.ts` line 9
@@ -868,47 +524,6 @@
 
 ---
 
-### BUG-65: No express.json() Body Size Limit Configured
-- **Severity:** Low (Security)
-- **Location:** `keepqueue-server/src/helpers/index.ts` line 39
-- **Description:** `app.use(express.json())` is called without a `limit` option. Express defaults to 100KB which is reasonable, but explicitly setting a limit (e.g., `express.json({ limit: '50kb' })`) would be a defense-in-depth measure and document the intent.
-- **Fix:** Add explicit limit: `app.use(express.json({ limit: '50kb' }))`
-- **Impact:** Default 100KB is acceptable but not explicitly controlled
-
----
-
-## Critical (Added in Session 5 — Zod Audit)
-
-### BUG-66: getCollectionSchema Accepts `value: any()` — Prototype Pollution Risk
-- **Status:** Fixed 2026-08-31 — `fieldName` is matched against a strict identifier pattern and rejects `__proto__`/`constructor`/`prototype`; `value` is no longer `any()` but a primitive or a bounded array of primitives
-- **Severity:** Critical (Security)
-- **Location:** `keepqueue-server/src/data/schemes.ts` lines 5-15, `keepqueue-server/src/data/helpers.ts` lines 3-4
-- **Description:** The `getCollectionSchema` has two dangerous fields:
-  - `fieldName: string()` — no bounds, no whitelist. Passed directly to `item?.[condition.fieldName]` in `checkCondition()` (data/helpers.ts line 3-4). Allows prototype chain access: `__proto__`, `constructor`, `prototype`
-  - `value: any()` — accepts ANY data type including nested objects, potentially enabling prototype pollution payloads
-- **Attack vector:** `POST /data/getCollection` with `{ collectionName: "users", conditions: [{ fieldName: "__proto__", operator: "==", value: {} }] }` — accesses prototype chain
-- **Fix:** Whitelist allowed field names; replace `any()` with `z.union([string(), number(), boolean(), array(string())])` for known safe types
-- **Impact:** Potential prototype pollution; combined with BUG-20 (no auth), any external request can probe all collections with arbitrary field access
-
----
-
-## Medium (Added in Session 5 — Zod Audit)
-
-### BUG-67: No Cross-Field Validation in Zod Schemas (end > start)
-- **Status:** Fixed 2026-08-31 — cross-field validation added to the appointment create and reschedule schemas
-- **Severity:** Medium
-- **Location:** Multiple schema files:
-  - `appointments/schemes.ts` lines 8-9: `start` and `end` — no `end > start` validation
-  - `waitlist/schemes.ts` lines 10-11: `preferredWindow.from` and `.to` — no `to >= from`
-  - `services/schemes.ts` lines 5-8: `startMin` and `endMin` — no `endMin > startMin`
-  - `staff/schemes.ts` lines 5-8: same pattern
-  - `data/schemes.ts` lines 70-71: `fromDate` and `toDate` — no `toDate >= fromDate`
-- **Description:** Zod schemas validate individual fields but never validate relationships between fields. Invalid data like `{ start: 2000000000, end: 1000000000 }` passes validation.
-- **Fix:** Add `.refine()` cross-field validations: `.refine(d => d.end > d.start, "End must be after start")`
-- **Impact:** Invalid time ranges accepted by API — overlaps with BUG-52
-
----
-
 ### BUG-68: Inconsistent ID Min Length Across Schemas
 - **Severity:** Medium
 - **Location:** `keepqueue-server/src/data/schemes.ts` (multiple lines)
@@ -942,26 +557,6 @@
 ---
 
 ## Additional Bugs (from QA Sessions 6–8)
-
-### BUG-71: Hardcoded Real Credentials in Client-Side Source Code
-- **Status:** Fixed 2026-08-31 — both `useState` defaults are now empty strings; the value is redacted from this file. It remains in git history — rotate it in Firebase
-- **Severity:** Critical (Security)
-- **Location:** `keepqueue-client/components/signin-form.tsx` lines 30–31
-- **Description:** A real Firebase password and two account emails were hardcoded as `useState` defaults (redacted here; the value is in the git history and must be rotated in Firebase). Shipped in every browser's JavaScript bundle — anyone can read them via DevTools → Sources.
-- **Fix:** Replace with empty strings: `useState("")`
-- **Impact:** Account takeover — anyone can authenticate as business owner or customer with full data access
-
----
-
-### BUG-72: Landing Page CTA Buttons Are Dead `<div>` Elements
-- **Status:** Fixed 2026-08-31 — both buttons rendered a bare `<div>` with the intended `<Link>` commented out. Register-a-business is wired to `/auth/signup/business`; search-businesses is disabled rather than pointed at `/customer/marketplace`, which does not exist (BUG-14)
-- **Severity:** High
-- **Location:** `app/landing-page/static-components.tsx` lines 121–136
-- **Description:** "Register New Business" and "Search Businesses" hero CTA buttons are `<div>` elements — the `<Link>` tags are commented out.
-- **Fix:** Uncomment `<Link>` tags and remove `<div>` wrappers
-- **Impact:** Both main landing page CTAs are non-functional
-
----
 
 ### BUG-73: Public Booking Page — Firebase Permission Error (Business Info Missing)
 - **Severity:** High
@@ -1017,16 +612,6 @@
 
 ---
 
-### BUG-79: `/data/getBusiness` Returns 200 with Error Body for Missing businessId
-- **Status:** Fixed 2026-08-31 — `/data/getBusiness` returns HTTP 400 on a missing identifier instead of 200 with an error body
-- **Severity:** Medium
-- **Location:** `POST /data/getBusiness`
-- **Description:** Sending `{}` returns `200 OK` with `{"success":false,"error":"Business ID or owner ID is required"}`. Should return HTTP 400.
-- **Fix:** Return 400 status code for validation errors
-- **Impact:** Inconsistent API design — HTTP 200 for errors
-
----
-
 ### BUG-80: Booking Page Shows No Services — Empty Service Selection
 - **Severity:** Medium
 - **Location:** `/home/[businessId]` — Step 1
@@ -1072,76 +657,11 @@
 
 ---
 
-### BUG-85: 7 TypeScript Errors in Client Code (4 Files)
-- **Severity:** Medium
-- **Location:** `Analytics.tsx`, `reviews/components.tsx`, `customer/dashboard/page.tsx`, `BookingInterface/WaitlistForm.tsx`
-- **Errors:**
-  - `Analytics.tsx(36,49)`: Type `Dispatch<SetStateAction<Period>>` not assignable to `(val: string) => void`
-  - `reviews/components.tsx(82,65)`: Expected 1-2 arguments, got 3
-  - `customer/dashboard/page.tsx(146,89)` and `(187,91)`: Expected 1-2 arguments, got 3
-  - `WaitlistForm.tsx(61-63)`: `field` does not exist in type `WhereCondition`
-- **Fix:** Fix type mismatches and update `WhereCondition` type
-- **Impact:** Type safety broken in 4 components
-
----
-
-### BUG-86: `/actions/login` Returns 500 on Invalid/Empty Request Body
-- **Status:** Fixed 2026-08-31 — `verifyToken` throws on a missing or malformed header, so the handler mapped it to 500; login now answers 401
-- **Severity:** High
-- **Location:** `POST /actions/login`
-- **Description:** Sending `{}` or `{"idToken": "fake"}` returns `500 Internal Server Error` instead of `400 Bad Request`. No Zod `validateBody` middleware on this route.
-- **Fix:** Add `validateBody` middleware with proper schema to `/actions/login`
-- **Impact:** Login handler crashes on bad input
-
----
-
-### BUG-87: Footer Copyright Year is 2024
-- **Severity:** Low
-- **Location:** `app/landing-page/static-components.tsx` line 375
-- **Description:** `© 2024 KeepQueue` — should be current year
-- **Fix:** Use `new Date().getFullYear()` or update to 2026
-- **Impact:** Outdated copyright
-
----
-
-### BUG-88: Missing Canonical Link Tag (SEO)
-- **Severity:** Low
-- **Location:** All pages
-- **Description:** No `<link rel="canonical">` on any page. May cause duplicate URL indexing.
-- **Fix:** Add canonical links in root layout or per-page metadata
-
----
-
 ### BUG-89: Heading Hierarchy Skips Levels (A11y)
 - **Severity:** Low
 - **Location:** Landing page
 - **Description:** `H1 → H3` (skips H2) for business/customer cards; `H2 → H4` (skips H3) for testimonial names. WCAG 2.1 AA recommends sequential heading levels.
 - **Fix:** Use proper heading hierarchy
-
----
-
-### BUG-90: No Skip-to-Main-Content Link (A11y)
-- **Severity:** Low
-- **Location:** All pages
-- **Description:** No `<a href="#main">Skip to content</a>` link. Keyboard-only users must Tab through the entire header.
-- **Fix:** Add skip link as first focusable element
-
----
-
-### BUG-91: Email Input No maxlength on Signup
-- **Severity:** Low
-- **Location:** Signup forms — email input
-- **Description:** Email field accepts 309+ characters with no client-side limit.
-- **Fix:** Add `maxLength={254}` (RFC 5321 maximum)
-
----
-
-### BUG-92: /test Debug Page Publicly Accessible
-- **Status:** Fixed 2026-08-31 — `app/test/page.tsx` deleted
-- **Severity:** Low
-- **Location:** `/test`
-- **Description:** Returns `v1.0.5 test` — debug page with no auth guard.
-- **Fix:** Delete `app/test/page.tsx` before production
 
 ---
 
@@ -1158,13 +678,7 @@
 
 | # | Severity | Bug Summary | Fix Effort |
 |---|----------|-------------|------------|
-| 1 | Critical | ✅ FIXED — Confirm appointment 400 — field name mismatch | 1 line |
-| 2 | Critical | ✅ FIXED — Cancel appointment 400 — field name mismatch | 1 line |
-| 3 | Critical | Direct URL navigation loses session | Medium |
-| 4 | High | Language toggle causes session loss | Medium |
 | 5 | High | Calendar view dropdown doesn't open | Small |
-| 6 | High | Analytics shows 0 data | Medium |
-| 7 | High | No-show/Done bypass server API | Medium |
 | 8 | High | Tablet layout truncation | Small |
 | 9 | Medium | Wrong label under No-Show Rate | 1 line |
 | 10 | Medium | Address shows "-" on booking page | Small |
@@ -1174,80 +688,49 @@
 | 14 | Medium | Marketplace 404 | Medium |
 | 15 | Medium | Accessibility mode no-op | Medium |
 | 16 | Low | No "All time" analytics filter | Small |
-| 17 | Low | Console.log in production | Small |
 | 18 | Low | LCP image missing eager | 1 line |
 | 19 | Low | Duplicate service names | Data issue |
-| 20 | **Critical** | **No auth middleware on API endpoints** | **Medium** |
-| 21 | High | Past time slots bookable for today | Small |
 | 22 | Medium | Browser back exits booking wizard | Medium |
 | 23 | Medium | Landing page 404 — wrong filename | 1 line (rename) |
 | 24 | Medium | Misleading empty state on search | Small |
-| 25 | Low | "1 hours" grammar error | 1 line |
-| 26 | Low | Currency shows "INS" not "ILS" | 1 line |
 | 27 | Low | Duplicate working hours header | Small |
 | 28 | High | Mobile appointment buttons overflow/truncated | Small |
-| 29 | Medium | ✅ FIXED — Customer cancel appointment — field name mismatch | 1 line |
 | 30 | Medium | Customer dashboard unreachable — no nav link | Small |
 | 31 | Medium | Sidebar active page highlight incorrect | Small |
-| 32 | Low | Theme toggle button missing aria-label | 1 line |
 | 33 | Low | Past appointments still show "Booked" — no auto-expiry | Medium |
 | 34 | Low | Repeated getBusiness API errors / race condition | Medium |
-| 35 | **Critical** | **setCustomClaims endpoint unauthenticated — privilege escalation** | **1 line** |
-| 36 | **Critical** | **CORS allows all origins in production** | **1 line** |
 | 37 | High | Massive client-side Firestore bypass — 7 collections written directly | Large |
 | 38 | Medium | Calendar "New event" allows empty title | Small |
-| 39 | Medium | No onAuthStateChanged listener — root cause of BUG-3/BUG-4 | Medium |
-| 40 | Medium | Analytics filters by created date instead of start date (BUG-6 root cause) | 1 line |
-| 41 | Low | authGuard middleware exists but never used (informational) | Medium |
-| 42 | **Critical** | **No Firestore security rules — database unprotected** | **Medium** |
 | 43 | **Critical** | **Race condition in appointment overlap detection** | **Large** |
 | 44 | High | Business timezone not in type schema — hardcoded fallback | Medium |
-| 45 | High | Reschedule detects own appointment as overlap conflict | Small |
-| 46 | High | No file size validation on logo upload — Firestore 1MB limit risk | Small |
 | 47 | High | Logo stored as base64 in Firestore instead of Firebase Storage | Medium |
-| 48 | High | No 401 handling — expired tokens cause generic errors | Medium |
 | 49 | Medium | No global React error boundary | Medium |
 | 50 | Medium | Firestore operations fail silently — no UI error feedback | Medium |
 | 51 | Medium | Off-by-one day risk for cross-timezone booking | Medium |
-| 52 | Medium | No validation that appointment start < end | 1 line |
 | 53 | Medium | Notification system fully stubbed — zero implementation | Large |
 | 54 | Low | Duplicate date libraries (moment + date-fns) — ~70KB bloat | Medium |
 | 55 | Low | Unused `motion` package in dependencies | 1 line |
 | 56 | Low | No dynamic imports / code splitting for heavy components | Medium |
 | 57 | Low | Duplicate icon libraries (lucide-react + @remixicon/react) | Small |
 | 58 | Low | No error tracking service (Sentry/LogRocket) | Medium |
-| 59 | Medium | No helmet.js — missing security headers | 1 line |
 | 60 | Medium | No login brute-force protection — no slowdown | Small |
 | 61 | Medium | Audit type definitions out of sync client/server | Small |
 | 62 | Medium | Business.description field missing on server type | 1 line |
 | 63 | Low | Missing setTimeout cleanup — memory leak risk | Small |
 | 64 | Low | In-memory rate limiter not scalable to multi-instance | Medium |
-| 65 | Low | No express.json() body size limit configured | 1 line |
-| 66 | **Critical** | **getCollectionSchema value: any() — prototype pollution risk** | **Medium** |
-| 67 | Medium | No cross-field validation (end > start) in Zod schemas | Small |
 | 68 | Medium | Inconsistent ID min length across schemas | Small |
 | 69 | Low | Phone fields lack min length and format validation | Small |
 | 70 | Low | logoUrl accepts any string — no .url() validation | 1 line |
-| 71 | **Critical** | **Hardcoded real credentials in client source code** | **1 line** |
-| 72 | High | Landing page CTA buttons are dead divs | 1 line |
 | 73 | High | Public booking page Firebase permission error — business info missing | Medium |
 | 74 | Medium | All 9 footer links return 404 | Medium |
 | 75 | Medium | Invalid business ID shows booking page instead of 404 | Small |
 | 76 | Medium | English mode: sign-in still shows Hebrew text | Medium |
 | 77 | Medium | English mode: landing page renders RTL with lang="he" | Medium |
 | 78 | Medium | English mode: testimonials and CTA remain Hebrew | Small |
-| 79 | Medium | /data/getBusiness returns 200 with error body | Small |
 | 80 | Medium | Booking page shows no services — empty selection | Medium (BUG-73) |
 | 81 | Medium | Testimonial section uses placeholder images | Small |
 | 82 | Medium | Newsletter "Start Now" button non-functional | Small |
 | 83 | Medium | Nav #pricing link points to non-existent section | Small |
 | 84 | Medium | Custom 404 page missing — Next.js default | Small |
-| 85 | Medium | 7 TypeScript errors in client (4 files) | Small |
-| 86 | High | /actions/login returns 500 on invalid body | Small |
-| 87 | Low | Footer copyright year is 2024 | 1 line |
-| 88 | Low | Missing canonical link tag (SEO) | Small |
 | 89 | Low | Heading hierarchy skips levels (A11y) | Small |
-| 90 | Low | No skip-to-main-content link (A11y) | Small |
-| 91 | Low | Email input no maxlength on signup | 1 line |
-| 92 | Low | /test debug page publicly accessible | 1 line (delete) |
 | 93 | Low | No hamburger menu on mobile landing page | Medium |

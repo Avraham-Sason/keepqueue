@@ -96,7 +96,6 @@ export const snapshot: Snapshot = (config, snapshotsFirstTime, settings) => {
     let isResolved = false;
     const promise = new Promise<void>((resolve) => {
         if (!settings?.disableLogs) {
-            console.log(`==> ${config.collectionName} subscribed.`);
         }
         resolvePromise = () => {
             if (!isResolved) {
@@ -185,7 +184,6 @@ export const snapshotDocument: SnapshotDocument = (config, snapshotsFirstTime) =
     let resolvePromise: () => void;
     let isResolved = false;
     const promise = new Promise<void>((resolve) => {
-        console.log(`==> Document in ${config.collectionName} subscribed.`);
         resolvePromise = () => {
             if (!isResolved) {
                 isResolved = true;

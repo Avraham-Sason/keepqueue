@@ -150,13 +150,11 @@ export function EventCalendar({ events = [], onEventAdd, onEventUpdate, onEventD
     };
 
     const handleEventSelect = (event: CalendarEvent) => {
-        console.log("Event selected:", event); // Debug log
         setSelectedEvent(event);
         setIsEventDialogOpen(true);
     };
 
     const handleEventCreate = (startTime: Date) => {
-        console.log("Creating new event at:", startTime); // Debug log
 
         // Snap to 15-minute intervals
         const minutes = startTime.getMinutes();

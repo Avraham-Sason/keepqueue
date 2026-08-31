@@ -20,11 +20,6 @@ export const useBusiness = (businessId?: string) => {
             if (!finalBusinessId) {
                 return;
             }
-            console.log("⚡ fetching business", {
-                queryKey: queryKey[1],
-                timestamp: Date.now(),
-                isAborted: context.signal.aborted,
-            });
 
             const business = await getBusinessById(finalBusinessId, context.signal);
             return business;
