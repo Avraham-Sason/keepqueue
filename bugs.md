@@ -591,7 +591,7 @@
 ## Critical (Added in Session 5)
 
 ### BUG-42: No Firestore Security Rules — Database Completely Unprotected
-- **Status:** Fixed 2026-08-31 — `firestore.rules` added at the repo root, deny-by-default with per-collection ownership. **Not deployed** — that needs the Firebase CLI
+- **Status:** Fixed 2026-08-31 — `firestore.rules` added at the repo root, deny-by-default with per-collection ownership, and **deployed** to project `keepqueue` on 2026-08-31
 - **Severity:** Critical (Security)
 - **Location:** Project root — missing `firestore.rules` file
 - **Description:** No `firestore.rules`, no `firebase.json`, and no `firestore.indexes.json` exist in the repository. The database relies on default Firestore security rules (likely open). Combined with BUG-37 (12 client files writing directly to 7 collections), any authenticated Firebase user can read/write any collection.
