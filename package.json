@@ -1,0 +1,17 @@
+{
+    "name": "keepqueue",
+    "private": true,
+    "version": "1.0.0",
+    "description": "Keepqueue monorepo - Next.js client, Express server, Firestore rules",
+    "scripts": {
+        "deploy": "npm run deploy:client && npm run deploy:server && npm run deploy:rules",
+        "deploy:client": "git push origin main",
+        "deploy:server": "ssh -t contabo-vps \"sudo bash /opt/keepqueue/infra/deploy.sh\"",
+        "deploy:rules": "npx firebase-tools deploy --only firestore:rules",
+        "deploy:rollback": "ssh -t contabo-vps \"sudo bash /opt/keepqueue/infra/deploy.sh $(cat /var/lib/keepqueue/previous-rev)\"",
+        "logs": "ssh contabo-vps \"sudo journalctl -u keepqueue-api -n 200 --no-pager\"",
+        "logs:follow": "ssh -t contabo-vps \"sudo journalctl -u keepqueue-api -f\"",
+        "status": "ssh contabo-vps \"systemctl status keepqueue-api --no-pager -l | head -20\"",
+        "health": "curl -s -o /dev/null -w \"api.keepqueue.com: HTTP %{http_code}\\n\" https://api.keepqueue.com/"
+    }
+}
