@@ -39,7 +39,7 @@
 
 ---
 
-### BUG-3: Direct URL Navigation Loses Session
+### BUG-3: Direct URL Navigation Loses Session
 - **Status:** Fixed 2026-08-31 — `onAuthStateChanged` now syncs Firebase auth into the persisted store, and `apiCall` waits for that restore before reading the token
 - **Severity:** Critical
 - **Location:** Auth/session persistence layer
@@ -56,7 +56,7 @@
 
 ## High Severity
 
-### BUG-4: Language Toggle Causes Session Loss
+### BUG-4: Language Toggle Causes Session Loss
 - **Status:** Fixed 2026-08-31 — same root cause as BUG-3 — a reload no longer drops the session now that Firebase auth is the source of truth
 - **Severity:** High
 - **Location:** Language switching mechanism
@@ -83,7 +83,7 @@
 
 ---
 
-### BUG-6: Analytics Shows 0 Data Despite Existing Appointments
+### BUG-6: Analytics Shows 0 Data Despite Existing Appointments
 - **Status:** Fixed 2026-08-31 — analytics filtered on `created`; it now filters on `start`, bounded by now — see BUG-40
 - **Severity:** High
 - **Location:** Analytics page data filtering/aggregation logic
@@ -98,7 +98,7 @@
 
 ---
 
-### BUG-7: Mark No-Show / Mark Done Bypass Server API
+### BUG-7: Mark No-Show / Mark Done Bypass Server API
 - **Status:** Fixed 2026-08-31 — no-show and done now POST to `/actions/businesses/appointments/updateStatus`, which authGuard and the ownership check both cover, instead of writing to Firestore from the browser
 - **Severity:** High
 - **Location:** `keepqueue-client/app/business/appointments/hooks.tsx`
@@ -265,7 +265,7 @@
 
 ## Critical (Added in Session 2)
 
-### BUG-20: API Endpoints Have No Authentication Middleware
+### BUG-20: API Endpoints Have No Authentication Middleware
 - **Status:** Fixed 2026-08-31 — every /actions and /data route now runs `authGuard`, per the approved endpoint classification; only the health checks, getBusiness, getAvailabilityByServiceId, getBusinessReviews and getBusinessRatings stay public because the booking page needs them
 - **Severity:** Critical (Security)
 - **Location:** `keepqueue-server/src/data/router.ts` and all action routers
@@ -287,7 +287,7 @@
 
 ## High (Added in Session 2)
 
-### BUG-21: Past Time Slots Bookable for Today
+### BUG-21: Past Time Slots Bookable for Today
 - **Status:** Fixed 2026-08-31 — `computeBusinessAvailability` clamps every produced interval to no earlier than now, so today's elapsed slots are not offered
 - **Severity:** High
 - **Location:** `keepqueue-client/components/BookingInterface/` — date/time step
@@ -483,7 +483,7 @@
 
 ## Critical (Added in Session 4)
 
-### BUG-35: setCustomClaims Endpoint Unauthenticated — Privilege Escalation
+### BUG-35: setCustomClaims Endpoint Unauthenticated — Privilege Escalation
 - **Status:** Fixed 2026-08-31 — the endpoint had no caller anywhere in the client and handed out claims to anyone who asked — route and handler deleted
 - **Severity:** Critical (Security)
 - **Location:** `keepqueue-server/src/actions/router.ts` line 10, `keepqueue-server/src/actions/services.ts` lines 52-66
@@ -498,7 +498,7 @@
 
 ---
 
-### BUG-36: CORS Allows All Origins in Production
+### BUG-36: CORS Allows All Origins in Production
 - **Status:** Fixed 2026-08-31 — CORS now allows only the configured origins (`allowed_origins` env, defaulting to keepqueue.com + localhost)
 - **Severity:** Critical (Security)
 - **Location:** `keepqueue-server/src/helpers/index.ts` line 38
@@ -555,7 +555,7 @@
 
 ---
 
-### BUG-39: No onAuthStateChanged Listener — Root Cause of BUG-3 and BUG-4
+### BUG-39: No onAuthStateChanged Listener — Root Cause of BUG-3 and BUG-4
 - **Status:** Fixed 2026-08-31 — added the missing `onAuthStateChanged` listener; a signed-out Firebase session now clears the persisted store
 - **Severity:** Medium (Architecture)
 - **Location:** `keepqueue-client/lib/store/authStore.ts`, `keepqueue-client/lib/firebase/connect.ts`
@@ -566,7 +566,7 @@
 
 ---
 
-### BUG-40: Analytics Filters by Created Date Instead of Start Date (BUG-6 Root Cause)
+### BUG-40: Analytics Filters by Created Date Instead of Start Date (BUG-6 Root Cause)
 - **Status:** Fixed 2026-08-31 — the analytics window filters by appointment `start` within [periodStart, now] instead of by `created`
 - **Severity:** Medium
 - **Location:** `keepqueue-server/src/data/services.ts` line 317
@@ -578,7 +578,7 @@
 
 ## Low (Added in Session 4)
 
-### BUG-41 (Informational): authGuard Middleware Exists But Is Never Used
+### BUG-41 (Informational): authGuard Middleware Exists But Is Never Used
 - **Status:** Fixed 2026-08-31 — `authGuard` is now applied; a new ownership layer sits beside it, because authGuard proves account type and not that the caller owns the record
 - **Severity:** Low (Informational — covered by BUG-20)
 - **Location:** `keepqueue-server/src/middlewares/authGuard.ts`
@@ -590,7 +590,7 @@
 
 ## Critical (Added in Session 5)
 
-### BUG-42: No Firestore Security Rules — Database Completely Unprotected
+### BUG-42: No Firestore Security Rules — Database Completely Unprotected
 - **Status:** Fixed 2026-08-31 — `firestore.rules` added at the repo root, deny-by-default with per-collection ownership, and **deployed** to project `keepqueue` on 2026-08-31
 - **Severity:** Critical (Security)
 - **Location:** Project root — missing `firestore.rules` file
@@ -636,7 +636,7 @@
 
 ---
 
-### BUG-45: Reschedule Detects Own Appointment as Overlap Conflict
+### BUG-45: Reschedule Detects Own Appointment as Overlap Conflict
 - **Status:** Fixed 2026-08-31 — `hasCalendarOverlapInCache` takes an `excludeEventId`; reschedule passes its own id so an appointment no longer collides with itself
 - **Severity:** High
 - **Location:** `keepqueue-server/src/actions/businesses/appointments/services.ts` line 103
@@ -647,7 +647,7 @@
 
 ---
 
-### BUG-46: No File Size Validation on Logo Upload — Firestore 1MB Limit Risk
+### BUG-46: No File Size Validation on Logo Upload — Firestore 1MB Limit Risk
 - **Status:** Fixed 2026-08-31 — `uploadFileToStorage` rejects anything over 5MB before it reaches Storage, with a typed `FileTooLargeError`
 - **Severity:** High
 - **Location:** `keepqueue-client/app/business/editDetails/hooks.tsx` lines 271-294
@@ -676,7 +676,7 @@
 
 ---
 
-### BUG-48: No 401 Handling — Expired Tokens Cause Generic Errors
+### BUG-48: No 401 Handling — Expired Tokens Cause Generic Errors
 - **Status:** Fixed 2026-08-31 — `apiCall` retries once with a force-refreshed ID token on a 401 before surfacing the error
 - **Severity:** High
 - **Location:** `keepqueue-client/lib/helpers/api.ts` lines 67-82
@@ -729,7 +729,7 @@
 
 ---
 
-### BUG-52: No Validation That Appointment Start < End
+### BUG-52: No Validation That Appointment Start < End
 - **Status:** Fixed 2026-08-31 — `createAppointmentSchema` and `rescheduleAppointmentSchema` now `.refine()` that end > start
 - **Severity:** Medium
 - **Location:** `keepqueue-server/src/actions/businesses/appointments/schemes.ts` lines 5-14
@@ -804,7 +804,7 @@
 
 ---
 
-### BUG-59: No helmet.js — Missing Security Headers
+### BUG-59: No helmet.js — Missing Security Headers
 - **Status:** Fixed 2026-08-31 — `helmet()` added ahead of every other middleware; JSON body capped at 1mb
 - **Severity:** Medium (Security)
 - **Location:** `keepqueue-server/src/helpers/index.ts`, `keepqueue-server/package.json`
@@ -879,7 +879,7 @@
 
 ## Critical (Added in Session 5 — Zod Audit)
 
-### BUG-66: getCollectionSchema Accepts `value: any()` — Prototype Pollution Risk
+### BUG-66: getCollectionSchema Accepts `value: any()` — Prototype Pollution Risk
 - **Status:** Fixed 2026-08-31 — `fieldName` is matched against a strict identifier pattern and rejects `__proto__`/`constructor`/`prototype`; `value` is no longer `any()` but a primitive or a bounded array of primitives
 - **Severity:** Critical (Security)
 - **Location:** `keepqueue-server/src/data/schemes.ts` lines 5-15, `keepqueue-server/src/data/helpers.ts` lines 3-4
@@ -894,7 +894,7 @@
 
 ## Medium (Added in Session 5 — Zod Audit)
 
-### BUG-67: No Cross-Field Validation in Zod Schemas (end > start)
+### BUG-67: No Cross-Field Validation in Zod Schemas (end > start)
 - **Status:** Fixed 2026-08-31 — cross-field validation added to the appointment create and reschedule schemas
 - **Severity:** Medium
 - **Location:** Multiple schema files:
@@ -943,7 +943,7 @@
 
 ## Additional Bugs (from QA Sessions 6–8)
 
-### BUG-71: Hardcoded Real Credentials in Client-Side Source Code
+### BUG-71: Hardcoded Real Credentials in Client-Side Source Code
 - **Status:** Fixed 2026-08-31 — both `useState` defaults are now empty strings; the value is redacted from this file. It remains in git history — rotate it in Firebase
 - **Severity:** Critical (Security)
 - **Location:** `keepqueue-client/components/signin-form.tsx` lines 30–31
@@ -953,7 +953,7 @@
 
 ---
 
-### BUG-72: Landing Page CTA Buttons Are Dead `<div>` Elements
+### BUG-72: Landing Page CTA Buttons Are Dead `<div>` Elements
 - **Status:** Fixed 2026-08-31 — both buttons rendered a bare `<div>` with the intended `<Link>` commented out. Register-a-business is wired to `/auth/signup/business`; search-businesses is disabled rather than pointed at `/customer/marketplace`, which does not exist (BUG-14)
 - **Severity:** High
 - **Location:** `app/landing-page/static-components.tsx` lines 121–136
@@ -1017,7 +1017,7 @@
 
 ---
 
-### BUG-79: `/data/getBusiness` Returns 200 with Error Body for Missing businessId
+### BUG-79: `/data/getBusiness` Returns 200 with Error Body for Missing businessId
 - **Status:** Fixed 2026-08-31 — `/data/getBusiness` returns HTTP 400 on a missing identifier instead of 200 with an error body
 - **Severity:** Medium
 - **Location:** `POST /data/getBusiness`
@@ -1085,7 +1085,7 @@
 
 ---
 
-### BUG-86: `/actions/login` Returns 500 on Invalid/Empty Request Body
+### BUG-86: `/actions/login` Returns 500 on Invalid/Empty Request Body
 - **Status:** Fixed 2026-08-31 — `verifyToken` throws on a missing or malformed header, so the handler mapped it to 500; login now answers 401
 - **Severity:** High
 - **Location:** `POST /actions/login`
@@ -1136,7 +1136,7 @@
 
 ---
 
-### BUG-92: /test Debug Page Publicly Accessible
+### BUG-92: /test Debug Page Publicly Accessible
 - **Status:** Fixed 2026-08-31 — `app/test/page.tsx` deleted
 - **Severity:** Low
 - **Location:** `/test`
