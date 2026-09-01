@@ -1,7 +1,7 @@
 {
     "name": "keepqueue",
     "private": true,
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "Keepqueue monorepo - Next.js client, Express server, Firestore rules",
     "scripts": {
         "deploy": "npm run deploy:client && npm run deploy:server && npm run deploy:rules",
