@@ -13,6 +13,7 @@ import { useLanguage } from "@/hooks";
 import { addDocument, setDocument } from "@/lib/firebase";
 import { useRefreshBusiness } from "../hooks";
 import StarBorder from "@/components/StarBorder";
+import { toast } from "sonner";
 
 function Services() {
     const { t } = useLanguage();
@@ -25,14 +26,15 @@ function Services() {
         try {
             if (editingService) {
                 await setDocument("services", serviceData.id!, serviceData);
-                refreshBusiness();
             } else {
                 await addDocument("services", serviceData);
-                refreshBusiness();
             }
+            refreshBusiness();
             closeDialog();
+            toast.success(t("changesSaved"));
         } catch (error) {
             console.error("Error saving service:", error);
+            toast.error(t("businessDetailsSaveError"));
         }
     };
     return (

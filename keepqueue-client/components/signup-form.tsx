@@ -10,9 +10,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { useLanguage } from "@/hooks";
-import { createUserWithEmailAndPassword } from "firebase/auth";
+import { createUserWithEmailAndPassword, deleteUser } from "firebase/auth";
 import { auth } from "@/lib/firebase/connect";
-import { addDocument } from "@/lib/firebase";
+import { setDocument } from "@/lib/firebase";
 import type { LoginType } from "@/lib/store";
 import { useAuthStore } from "@/lib/store";
 import type { BusinessOwner, Customer } from "@/lib/types";
@@ -49,12 +49,14 @@ export function SignUpForm({ type }: SignUpFormProps) {
         setIsLoading(true);
 
         try {
-            const credential = await createUserWithEmailAndPassword(auth, email, password);
+            const normalizedEmail = email.trim().toLowerCase();
+            const credential = await createUserWithEmailAndPassword(auth, normalizedEmail, password);
             const firebaseUser = credential.user;
 
             const now = Timestamp.now();
             const baseUser = {
-                email,
+                id: firebaseUser.uid,
+                email: normalizedEmail,
                 phone,
                 firstName,
                 lastName,
@@ -65,31 +67,35 @@ export function SignUpForm({ type }: SignUpFormProps) {
                 photoURL: firebaseUser.photoURL || "",
             };
 
-            if (type === "business") {
-                const businessUser: Omit<BusinessOwner, "id"> = {
-                    ...baseUser,
-                    type: "business",
-                    ownedBusinessIds: [],
-                };
-                await addDocument("users", businessUser, true);
-            } else {
-                const customerUser: Omit<Customer, "id"> = {
-                    ...baseUser,
-                    type: "customer",
-                    businessIds: [],
-                    blockedByBusinessIds: [],
-                };
-                await addDocument("users", customerUser, true);
+            const profile: Omit<BusinessOwner, "id"> | Omit<Customer, "id"> =
+                type === "business"
+                    ? { ...baseUser, type: "business", ownedBusinessIds: [] }
+                    : { ...baseUser, type: "customer", businessIds: [], blockedByBusinessIds: [] };
+
+            // Document id must be the Auth uid: firestore.rules only permit users/{userId}
+            // when userId == request.auth.uid, and every server ownership check resolves
+            // users by uid. A random id produces an account that cannot do anything.
+            // setDocument rejects when the write does not land. Catching it here rather than
+            // letting it fall through keeps the rollback below reachable: an Auth account with
+            // no profile can neither sign in nor be registered again.
+            let profileWritten = true;
+            try {
+                await setDocument("users", firebaseUser.uid, profile);
+            } catch {
+                profileWritten = false;
+            }
+            if (!profileWritten) {
+                await deleteUser(firebaseUser).catch(() => undefined);
+                setError(t("signUpError"));
+                return;
             }
 
-            const result = await login(email, password);
-            if (result.success) {
-                if (type === "business") {
-                    router.push("/business");
-                } else {
-                    router.push("/customer/dashboard");
-                }
+            const result = await login(normalizedEmail, password);
+            if (!result.success) {
+                setError(t(result.error ?? "signUpError"));
+                return;
             }
+            router.push(type === "business" ? "/business" : "/customer/dashboard");
         } catch (err: any) {
             if (err?.code === "auth/email-already-in-use") {
                 setError(t("emailAlreadyInUse"));

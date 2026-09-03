@@ -11,6 +11,7 @@ import { useLanguage } from "@/hooks";
 import { addDocument, setDocument } from "@/lib/firebase";
 import { useRefreshBusiness } from "../hooks";
 import StarBorder from "@/components/StarBorder";
+import { toast } from "sonner";
 
 function Staff() {
     const { t } = useLanguage();
@@ -29,8 +30,10 @@ function Staff() {
             }
             refreshBusiness();
             closeDialog();
+            toast.success(t("changesSaved"));
         } catch (error) {
             console.error("Error saving staff:", error);
+            toast.error(t("businessDetailsSaveError"));
         }
     };
 
@@ -66,7 +69,13 @@ function Staff() {
                 </div>
             )}
 
-            <StaffDialog isOpen={isOpen} onClose={closeDialog} onSave={handleSaveStaff} staff={editingStaff} />
+            <StaffDialog
+                isOpen={isOpen}
+                onClose={closeDialog}
+                onSave={handleSaveStaff}
+                staff={editingStaff}
+                services={(currentBusiness?.services ?? []).filter((service) => service.active !== false)}
+            />
 
             <DeleteStaffDialog
                 staffId={deleteStaffId}

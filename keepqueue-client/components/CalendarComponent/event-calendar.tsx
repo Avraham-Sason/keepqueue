@@ -1,11 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { RiCalendarCheckLine } from "@remixicon/react";
+import { CalendarCheck } from "lucide-react";
 import { addDays, addMonths, addWeeks, endOfWeek, format, isSameMonth, startOfWeek, subMonths, subWeeks } from "date-fns";
 import { enUS, he } from "date-fns/locale";
 import { ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, PlusIcon } from "lucide-react";
-import { toast } from "sonner";
 
 import {
     AgendaDaysToShow,
@@ -79,8 +78,6 @@ export function EventCalendar({ events = [], onEventAdd, onEventUpdate, onEventD
         }),
         [viewLabels]
     );
-
-    const toastPosition = isRtl ? "bottom-right" : "bottom-left";
 
     // Add keyboard shortcuts for view switching
     useEffect(() => {
@@ -182,73 +179,27 @@ export function EventCalendar({ events = [], onEventAdd, onEventUpdate, onEventD
         setIsEventDialogOpen(true);
     };
 
+    // Whether an edit, a delete or a drag actually persisted is only known to whoever owns the
+    // write, so the confirmation toast belongs there too. Announcing it from here reported every
+    // one of these as a success even while the handlers were undefined and nothing was saved.
     const handleEventSave = (event: CalendarEvent) => {
         if (event.id) {
             onEventUpdate?.(event);
-            // Show toast notification when an event is updated
-            toast(
-                translate("calendarToastEventUpdated", {
-                    title: event.title || translate("calendarDialogNoTitle"),
-                }),
-                {
-                    description: format(new Date(event.start), "PPP", { locale }),
-                    position: toastPosition,
-                }
-            );
         } else {
-            const newEvent = {
-                ...event,
-                id: Math.random().toString(36).substring(2, 11),
-            };
-            onEventAdd?.(newEvent);
-            // Show toast notification when an event is added
-            toast(
-                translate("calendarToastEventAdded", {
-                    title: newEvent.title || translate("calendarDialogNoTitle"),
-                }),
-                {
-                    description: format(new Date(newEvent.start), "PPP", { locale }),
-                    position: toastPosition,
-                }
-            );
+            onEventAdd?.({ ...event, id: Math.random().toString(36).substring(2, 11) });
         }
         setIsEventDialogOpen(false);
         setSelectedEvent(null);
     };
 
     const handleEventDelete = (eventId: string) => {
-        const deletedEvent = events.find((e) => e.id === eventId);
         onEventDelete?.(eventId);
         setIsEventDialogOpen(false);
         setSelectedEvent(null);
-
-        // Show toast notification when an event is deleted
-        if (deletedEvent) {
-            toast(
-                translate("calendarToastEventDeleted", {
-                    title: deletedEvent.title || translate("calendarDialogNoTitle"),
-                }),
-                {
-                    description: format(new Date(deletedEvent.start), "PPP", { locale }),
-                    position: toastPosition,
-                }
-            );
-        }
     };
 
     const handleEventUpdate = (updatedEvent: CalendarEvent) => {
         onEventUpdate?.(updatedEvent);
-
-        // Show toast notification when an event is updated via drag and drop
-        toast(
-            translate("calendarToastEventMoved", {
-                title: updatedEvent.title || translate("calendarDialogNoTitle"),
-            }),
-            {
-                description: format(new Date(updatedEvent.start), "PPP", { locale }),
-                position: toastPosition,
-            }
-        );
     };
 
     const viewTitle = useMemo(() => {
@@ -312,7 +263,7 @@ export function EventCalendar({ events = [], onEventAdd, onEventUpdate, onEventD
                                 onClick={handleToday}
                                 aria-label={translate("today")}
                             >
-                                <RiCalendarCheckLine className="min-[480px]:hidden" size={16} aria-hidden="true" />
+                                <CalendarCheck className="min-[480px]:hidden" size={16} aria-hidden="true" />
                                 <span className="hidden min-[480px]:inline">{translate("today")}</span>
                             </Button>
                             <div className="flex gap-0 items-center sm:gap-2">

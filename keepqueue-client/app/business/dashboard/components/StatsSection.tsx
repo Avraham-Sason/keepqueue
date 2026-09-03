@@ -32,13 +32,18 @@ export const StatCard = ({ title, icon: Icon, value, description }: StatCardProp
 export const StatsSection = () => {
     const { t } = useLanguage();
     const currentBusiness = useBusinessesStore.currentBusiness();
-    const businessAppointments: CalendarEventWithRelations[] = currentBusiness?.calendar || [];
+    const calendar: CalendarEventWithRelations[] = currentBusiness?.calendar || [];
+    const currency = currentBusiness?.currency || "₪";
 
-    // Calculate real stats
-    const todayIso = new Date().toISOString().split("T")[0];
-    const todayAppointments = businessAppointments.filter((apt) => timestampToString(apt.start, { format: "DD/MM/YY" }) === todayIso);
+    // Vacation and holiday blocks live in the same collection; only bookings are countable here.
+    const businessAppointments = calendar.filter((apt) => apt.type === "APPOINTMENT");
+
+    const today = timestampToString(new Date(), { format: "DD/MM/YY" });
+    const todayAppointments = businessAppointments.filter(
+        (apt) => apt.status !== "CANCELLED" && timestampToString(apt.start, { format: "DD/MM/YY" }) === today
+    );
     const confirmedAppointments = businessAppointments.filter((apt) => apt.status === "CONFIRMED");
-    const totalRevenue = 0;
+    const totalRevenue = businessAppointments.filter((apt) => apt.status === "DONE").reduce((sum, apt) => sum + (apt.service?.price ?? 0), 0);
 
     return (
         <motion.div
@@ -54,12 +59,12 @@ export const StatsSection = () => {
                 description={todayAppointments.length === 0 ? t("noAppointmentsToday") : t("scheduledAppointments")}
             />
 
-            <StatCard title={t("confirmed")} icon={Users} value={confirmedAppointments.length} description={t("totalAppointments")} />
+            <StatCard title={t("confirmed")} icon={Users} value={confirmedAppointments.length} description={t("awaitingArrival")} />
 
             <StatCard
                 title={t("revenue")}
                 icon={DollarSign}
-                value={`₪${totalRevenue.toLocaleString()}`}
+                value={`${currency}${totalRevenue.toLocaleString()}`}
                 description={t("fromCompletedAppointments")}
             />
 

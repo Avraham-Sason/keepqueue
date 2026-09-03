@@ -1,69 +1,59 @@
-import { useMemo, useState } from "react";
-import type { CalendarEventWithRelations } from "@/lib/types/business";
-import type { Service } from "@/lib/types";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { apiCall } from "@/lib/helpers";
 
 export type Period = "7" | "30" | "90";
 
-export function useAnalytics(calendar: CalendarEventWithRelations[], services: Service[]) {
+interface AnalyticsTopService {
+    serviceId: string;
+    serviceName: string;
+    bookings: number;
+    revenue: number;
+}
+
+interface BusinessAnalytics {
+    periodDays: number;
+    totalBookings: number;
+    completed: number;
+    noShows: number;
+    cancellations: number;
+    noShowRate: number;
+    cancellationRate: number;
+    totalRevenue: number;
+    topServices: AnalyticsTopService[];
+}
+
+/**
+ * The numbers come from /data/getBusinessAnalytics rather than from the calendar in the store.
+ * Recomputing them here meant a second definition of "revenue" and "in period" that drifted from
+ * the server's, and it could not read Admin-SDK timestamps ({_seconds}) in the first place.
+ */
+export function useAnalytics(businessId?: string) {
     const [period, setPeriod] = useState<Period>("30");
 
-    const stats = useMemo(() => {
-        const now = Date.now();
-        const periodMs = parseInt(period) * 24 * 60 * 60 * 1000;
-        const cutoff = now - periodMs;
+    const { data, isLoading, isError } = useQuery({
+        queryKey: ["businessAnalytics", businessId, period],
+        queryFn: () => apiCall<BusinessAnalytics>("POST", "data", "getBusinessAnalytics", { businessId, periodDays: Number(period) }),
+        enabled: !!businessId,
+        refetchOnWindowFocus: false,
+    });
 
-        const appointments = calendar.filter((e) => {
-            if (e.type !== "APPOINTMENT") return false;
-            const ts = e.start && "seconds" in e.start ? e.start.seconds * 1000 : 0;
-            return ts >= cutoff;
-        });
-
-        const totalBookings = appointments.length;
-        const noShows = appointments.filter((e) => e.status === "NO_SHOW").length;
-        const cancellations = appointments.filter((e) => e.status === "CANCELLED").length;
-        const completed = appointments.filter((e) => e.status === "DONE" || e.status === "CONFIRMED").length;
-        const noShowRate = totalBookings > 0 ? Math.round((noShows / totalBookings) * 100) : 0;
-        const cancellationRate = totalBookings > 0 ? Math.round((cancellations / totalBookings) * 100) : 0;
-
-        const revenueByService: Record<string, { name: string; revenue: number; count: number }> = {};
-        appointments
-            .filter((e) => e.status === "DONE" || e.status === "CONFIRMED")
-            .forEach((e) => {
-                const svc = services.find((s) => s.id === e.serviceId);
-                if (svc) {
-                    if (!revenueByService[svc.id!]) {
-                        revenueByService[svc.id!] = { name: svc.name, revenue: 0, count: 0 };
-                    }
-                    revenueByService[svc.id!].revenue += svc.price;
-                    revenueByService[svc.id!].count++;
-                }
-            });
-
-        const topServices = Object.values(revenueByService)
-            .sort((a, b) => b.count - a.count)
-            .slice(0, 5);
-
-        const totalRevenue = Object.values(revenueByService).reduce((acc, s) => acc + s.revenue, 0);
-
-        const bookingsByDay: Record<string, number> = {};
-        appointments.forEach((e) => {
-            const ts = e.start && "seconds" in e.start ? e.start.seconds * 1000 : 0;
-            const day = new Date(ts).toISOString().split("T")[0];
-            bookingsByDay[day] = (bookingsByDay[day] || 0) + 1;
-        });
-
-        return {
-            totalBookings,
-            noShows,
-            cancellations,
-            completed,
-            noShowRate,
-            cancellationRate,
-            topServices,
-            totalRevenue,
-            bookingsByDay,
-        };
-    }, [calendar, services, period]);
-
-    return { ...stats, period, setPeriod };
+    return {
+        totalBookings: data?.totalBookings ?? 0,
+        completed: data?.completed ?? 0,
+        noShows: data?.noShows ?? 0,
+        cancellations: data?.cancellations ?? 0,
+        noShowRate: data?.noShowRate ?? 0,
+        cancellationRate: data?.cancellationRate ?? 0,
+        totalRevenue: data?.totalRevenue ?? 0,
+        topServices: (data?.topServices ?? []).slice(0, 5).map((service) => ({
+            name: service.serviceName,
+            revenue: service.revenue,
+            count: service.bookings,
+        })),
+        isLoading,
+        isError,
+        period,
+        setPeriod,
+    };
 }

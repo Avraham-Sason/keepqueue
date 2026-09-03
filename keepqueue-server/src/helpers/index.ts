@@ -1,9 +1,12 @@
+export * from "./appError";
+export * from "./cors";
 import helmet from "helmet";
 import express, { Express } from "express";
 import cors from "cors";
 import { logger } from "../managers";
 import { errorHandler, trimBodyMiddleware, rateLimiter } from "../middlewares";
 import { MainRouter, StringObject } from "../types";
+import { allowedOrigins, corsOriginCheck } from "./cors";
 import { readFileSync } from "fs";
 import packageJson from "../../package.json";
 
@@ -30,32 +33,19 @@ export const initEnvVariables = (requiredVars: string[] = []) => {
     return envVars;
 };
 
-const DEFAULT_ORIGINS = ["https://keepqueue.com", "https://www.keepqueue.com", "http://localhost:3000", "http://localhost:3001"];
-
-const VERCEL_PREVIEW = /^https:\/\/keepqueue-[a-z0-9-]+\.vercel\.app$/;
-
-export const allowedOrigins = (configured?: string): string[] =>
-    configured
-        ? configured.split(",").map((origin) => origin.trim()).filter(Boolean)
-        : DEFAULT_ORIGINS;
-
-export const isAllowedOrigin = (origin: string | undefined, allowed: string[]): boolean =>
-    !origin || allowed.includes(origin) || VERCEL_PREVIEW.test(origin);
-
-export const corsOriginCheck =
-    (allowed: string[]) =>
-    (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) =>
-        isAllowedOrigin(origin, allowed) ? callback(null, true) : callback(new Error("Origin not allowed"));
+const DRAIN_TIMEOUT_MS = 15_000;
 
 export const startServer = async (mainRouter: MainRouter, port?: number): Promise<Express> => {
     const app: Express = express();
     app.set("trust proxy", 1);
     const { version, name } = packageJson;
-    let envData = initEnvVariables(["port"]);
+    let envData = initEnvVariables();
     const resolvedPort = Number(port || process.env.PORT || envData.port);
     port = Number.isFinite(resolvedPort) && resolvedPort > 0 ? resolvedPort : 9000;
     app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
-    app.use(cors({ origin: corsOriginCheck(allowedOrigins(envData.allowed_origins)), credentials: true }));
+    // The API authenticates with a Bearer token, never a cookie, so credentialed CORS buys
+    // nothing and only widens what a foreign origin may attempt.
+    app.use(cors({ origin: corsOriginCheck(allowedOrigins(envData.allowed_origins), envData.vercel_preview_scope) }));
     app.use(express.json({ limit: "1mb" }));
     app.use(trimBodyMiddleware());
     app.use(rateLimiter(60 * 1000, 100));
@@ -63,11 +53,34 @@ export const startServer = async (mainRouter: MainRouter, port?: number): Promis
     app.use(errorHandler);
 
     return new Promise<Express>((resolve, reject) => {
-        app.listen(port, () => {
+        const server = app.listen(port, () => {
             logger.log(`Server is running at http://localhost:${port}`);
             logger.log("project status", { name, version });
             resolve(app);
         });
+        // Without a listener, EADDRINUSE is an unhandled 'error' event: the process dies with no
+        // diagnostic while the instance already holding the port keeps serving the old build.
+        server.on("error", reject);
+
+        const shutdown = (signal: string) => {
+            logger.log(`${signal} received, draining in-flight requests`);
+            // ponytail: middlewares/rateLimiter.ts starts a cleanup setInterval at module scope
+            // and never clears it, so the event loop never empties on its own — this timer is
+            // what actually ends the process, not just a safety net for a slow request.
+            const forceExit = setTimeout(() => {
+                logger.error(`drain did not finish within ${DRAIN_TIMEOUT_MS}ms, exiting anyway`);
+                process.exit(1);
+            }, DRAIN_TIMEOUT_MS);
+            server.close(() => {
+                clearTimeout(forceExit);
+                process.exit(0);
+            });
+            // close() waits for every open socket, and keep-alive sockets sit idle between
+            // requests; without this a healthy deploy always pays the full drain timeout.
+            server.closeIdleConnections();
+        };
+        process.once("SIGTERM", () => shutdown("SIGTERM"));
+        process.once("SIGINT", () => shutdown("SIGINT"));
     });
 };
 

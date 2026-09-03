@@ -1,4 +1,6 @@
 import { useState, useMemo } from "react";
+import { toast } from "sonner";
+import { useLanguage } from "@/hooks";
 import type { CalendarEventStatus, CalendarEventWithRelations } from "@/lib/types";
 import { cancelAppointment, confirmAppointment, updateAppointmentStatus } from "./helpers";
 import { useRefreshBusiness } from "../hooks";
@@ -53,55 +55,32 @@ export function useAppointmentActions() {
     const [isProcessing, setIsProcessing] = useState(false);
     const [cancelDialogEventId, setCancelDialogEventId] = useState<string | null>(null);
     const refreshBusiness = useRefreshBusiness();
+    const { t } = useLanguage();
 
-    const handleConfirm = async (eventId: string) => {
+    // Every one of these used to swallow its failure into console.error: the button re-enabled,
+    // nothing changed, and the owner had no way to tell a refused action from a slow one. The
+    // server now answers 4xx with a message written for the caller, so show it.
+    const run = async (action: () => Promise<unknown>, successKey: string, onDone?: () => void) => {
         setIsProcessing(true);
         try {
-            await confirmAppointment(eventId);
-            refreshBusiness();
+            await action();
+            toast.success(t(successKey));
+            onDone?.();
+            await refreshBusiness();
         } catch (error) {
-            console.error("Error confirming appointment:", error);
+            toast.error(error instanceof Error ? error.message : t("errorGeneric"));
         } finally {
             setIsProcessing(false);
         }
     };
 
-    const handleCancel = async (eventId: string) => {
-        setIsProcessing(true);
-        try {
-            await cancelAppointment(eventId);
-            setCancelDialogEventId(null);
-            refreshBusiness();
-        } catch (error) {
-            console.error("Error cancelling appointment:", error);
-        } finally {
-            setIsProcessing(false);
-        }
-    };
+    const handleConfirm = (eventId: string) => run(() => confirmAppointment(eventId), "appointmentConfirmed");
 
-    const handleMarkNoShow = async (eventId: string) => {
-        setIsProcessing(true);
-        try {
-            await updateAppointmentStatus(eventId, "NO_SHOW");
-            refreshBusiness();
-        } catch (error) {
-            console.error("Error marking no-show:", error);
-        } finally {
-            setIsProcessing(false);
-        }
-    };
+    const handleCancel = (eventId: string) => run(() => cancelAppointment(eventId), "appointmentCancelled", () => setCancelDialogEventId(null));
 
-    const handleMarkDone = async (eventId: string) => {
-        setIsProcessing(true);
-        try {
-            await updateAppointmentStatus(eventId, "DONE");
-            refreshBusiness();
-        } catch (error) {
-            console.error("Error marking done:", error);
-        } finally {
-            setIsProcessing(false);
-        }
-    };
+    const handleMarkNoShow = (eventId: string) => run(() => updateAppointmentStatus(eventId, "NO_SHOW"), "appointmentMarkedNoShow");
+
+    const handleMarkDone = (eventId: string) => run(() => updateAppointmentStatus(eventId, "DONE"), "appointmentMarkedDone");
 
     return {
         isProcessing,

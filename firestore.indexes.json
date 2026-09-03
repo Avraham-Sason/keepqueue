@@ -1,0 +1,13 @@
+{
+    "indexes": [
+        {
+            "collectionGroup": "calendar",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "businessId", "order": "ASCENDING" },
+                { "fieldPath": "end", "order": "ASCENDING" }
+            ]
+        }
+    ],
+    "fieldOverrides": []
+}

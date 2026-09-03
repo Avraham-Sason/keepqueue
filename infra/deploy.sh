@@ -4,6 +4,7 @@
 # Usage:
 #   sudo bash /opt/keepqueue/infra/deploy.sh              # deploy origin/main
 #   sudo bash /opt/keepqueue/infra/deploy.sh <git-rev>    # deploy a specific revision
+#   sudo bash /opt/keepqueue/infra/deploy.sh --rollback   # deploy the revision this replaced
 #
 # Reached three ways, all running this same file so they cannot drift:
 #   - `npm run deploy:server` from a workstation, over SSH
@@ -19,6 +20,7 @@ APP_DIR="$CHECKOUT/keepqueue-server"
 ADMIN_USER="${ADMIN_USER:-avraham}"
 UNIT=keepqueue-api
 HEALTH_URL=http://127.0.0.1:9000/
+PREVIOUS_REV_FILE=/var/lib/keepqueue/previous-rev
 TARGET="${1:-origin/main}"
 
 log() { echo "[deploy] $*"; }
@@ -26,6 +28,15 @@ die() { echo "[deploy] FAILED: $*" >&2; exit 1; }
 
 [ "$(id -u)" -eq 0 ] || die "run with sudo"
 [ -d "$APP_DIR" ] || die "$APP_DIR missing — run infra/scripts/setup-keepqueue.sh first"
+
+# Resolved here rather than in the caller's command line: a $(cat ...) inside `ssh "..."` is
+# expanded by the operator's own shell, which has no such file, so the target silently became
+# origin/main and the "rollback" redeployed the newest code.
+if [ "$TARGET" = "--rollback" ]; then
+    [ -s "$PREVIOUS_REV_FILE" ] || die "$PREVIOUS_REV_FILE is empty or missing — nothing to roll back to"
+    TARGET="$(cat "$PREVIOUS_REV_FILE")"
+    log "rolling back to $TARGET"
+fi
 
 PREVIOUS_REV="$(runuser -u "$ADMIN_USER" -- git -C "$CHECKOUT" rev-parse --short HEAD)"
 log "current revision $PREVIOUS_REV"
@@ -52,8 +63,8 @@ runuser -u "$ADMIN_USER" -- bash -lc "cd '$APP_DIR' && pnpm run build" \
 log "restarting $UNIT"
 # Recorded before the restart, so a deploy that dies mid-restart still leaves a target to roll
 # back to. Matches /var/lib/vps/previous-rev on the VPS side.
-install -d -m 0755 /var/lib/keepqueue
-printf '%s' "$PREVIOUS_REV" > /var/lib/keepqueue/previous-rev
+install -d -m 0755 "$(dirname "$PREVIOUS_REV_FILE")"
+printf '%s' "$PREVIOUS_REV" > "$PREVIOUS_REV_FILE"
 systemctl restart "$UNIT"
 
 log "waiting for health"

@@ -3,13 +3,14 @@
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle2, Calendar, Clock, ArrowLeft } from "lucide-react";
+import { CheckCircle2, Calendar, Clock, ArrowLeft, ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { useLanguage } from "@/hooks";
 import Link from "next/link";
 
 export default function BookingSuccessPage() {
-    const { t } = useLanguage();
+    const { t, isRtl } = useLanguage();
+    const ForwardIcon = isRtl ? ArrowLeft : ArrowRight;
     const searchParams = useSearchParams();
 
     const businessName = searchParams.get("business") || "";
@@ -87,7 +88,7 @@ export default function BookingSuccessPage() {
                             {businessId && (
                                 <Button asChild className="w-full">
                                     <Link href={`/home/${businessId}`}>
-                                        <ArrowLeft className="mr-2 h-4 w-4" />
+                                        <ForwardIcon className="me-2 h-4 w-4" />
                                         {t("bookAnotherAppointment")}
                                     </Link>
                                 </Button>

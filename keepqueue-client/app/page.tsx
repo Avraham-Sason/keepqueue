@@ -1,23 +1,25 @@
 import type { Metadata } from "next";
-import { getServerTranslation } from "@translations/server";
+import { getServerLanguage, getServerTranslation } from "@translations/server";
 import LandingPage from "./landing-page";
 
 
 export async function generateMetadata(): Promise<Metadata> {
+    const lang = await getServerLanguage();
     const t = await getServerTranslation();
-    const title = `KeepQueue | מערכת זימון תורים חכמה לעסקים - ${t("heroMain")} ${t("heroSub")}`;
-    const description = "הפלטפורמה המתקדמת ביותר לניהול וזימון תורים אונליין. ייעלו את העסק שלכם ואפשרו ללקוחות להזמין תור בקליק בצורה פשוטה ומהירה.";
-    
+    const title = t("metaHomeTitle");
+    const description = t("metaHomeDescription");
+
     return {
         title,
         description,
-        keywords: ["זימון תורים", "מערכת לזימון תורים", "ניהול תורים", "יומן תורים דיגיטלי", "KeepQueue"],
+        keywords: t("metaSiteKeywords").split(",").map((keyword) => keyword.trim()),
+        alternates: { canonical: "/" },
         openGraph: {
             title,
             description,
             url: "https://keepqueue.com",
             siteName: t("brandName"),
-            locale: "he_IL",
+            locale: lang === "he" ? "he_IL" : "en_US",
             type: "website",
             images: [
                 {
@@ -37,23 +39,20 @@ export async function generateMetadata(): Promise<Metadata> {
     };
 }
 
-export default function HomePage() {
+export default async function HomePage() {
+    const t = await getServerTranslation();
     const jsonLd = {
         "@context": "https://schema.org",
         "@type": "SoftwareApplication",
-        "name": "KeepQueue",
+        "name": "Keepqueue",
+        "url": "https://keepqueue.com",
         "operatingSystem": "Web",
         "applicationCategory": "BusinessApplication",
-        "description": "מערכת חכמה לזימון וניהול תורים אונליין לעסקים ולקוחות.",
+        "description": t("metaHomeDescription"),
         "offers": {
             "@type": "Offer",
             "price": "0",
             "priceCurrency": "ILS"
-        },
-        "aggregateRating": {
-            "@type": "AggregateRating",
-            "ratingValue": "4.9",
-            "ratingCount": "120"
         }
     };
 

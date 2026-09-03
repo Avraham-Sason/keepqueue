@@ -1,0 +1,12 @@
+{
+  "name": "keepqueue-rules-tests",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@firebase/rules-unit-testing": "^5.0.2",
+    "firebase": "^12.18.0"
+  },
+  "scripts": {
+    "test": "firebase emulators:exec --only firestore --project keepqueue-rules-test \"node rules.test.mjs\""
+  }
+}

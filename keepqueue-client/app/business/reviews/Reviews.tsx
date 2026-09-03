@@ -8,6 +8,7 @@ import { useReviewStats } from "./hooks";
 import { StatsCard, ReviewCard, EmptyState } from "./components";
 import { setDocument } from "@/lib/firebase";
 import { useRefreshBusiness } from "../hooks";
+import { toast } from "sonner";
 
 function Reviews() {
     const { t } = useLanguage();
@@ -21,8 +22,10 @@ function Reviews() {
         try {
             await setDocument("reviews", reviewId, { flagged });
             refreshBusiness();
+            toast.success(t("changesSaved"));
         } catch (error) {
             console.error("Error toggling review flag:", error);
+            toast.error(t("businessDetailsSaveError"));
         }
     };
 

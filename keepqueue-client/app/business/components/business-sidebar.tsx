@@ -27,7 +27,7 @@ import { useBusinessesStore } from "@/lib/store/businesses";
 import Image from "next/image";
 import { A11yToggle, LanguageToggle } from "@/components/config";
 import { ThemeToggle } from "@/components/theme";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 const menuItems = [
     {
@@ -85,8 +85,16 @@ export function BusinessSidebar() {
     const isMobile = useIsMobile();
 
     const user = useAuthStore.user();
+    const logout = useAuthStore.logout();
     const isRtl = useSettingsStore.isRtl();
     const currentBusiness = useBusinessesStore.currentBusiness();
+    const router = useRouter();
+
+    const handleSignOut = async () => {
+        await logout();
+        router.replace("/");
+    };
+
     if (!user || !currentBusiness) {
         return null;
     }
@@ -146,11 +154,9 @@ export function BusinessSidebar() {
                     <A11yToggle />
                     <ThemeToggle />
                     <LanguageToggle />
-                    <Button variant="outline" size="sm" className="flex-1 bg-transparent" asChild>
-                        <Link href="/">
-                            <LogOut className="h-4 w-4 mr-2" />
-                            {t("signOut")}
-                        </Link>
+                    <Button variant="outline" size="sm" className="flex-1 bg-transparent" onClick={handleSignOut}>
+                        <LogOut className="h-4 w-4 me-2" />
+                        {t("signOut")}
                     </Button>
                 </div>
             </SidebarFooter>

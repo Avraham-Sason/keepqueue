@@ -14,8 +14,15 @@ import { logger } from "../managers";
 import { DecodedIdToken } from "firebase-admin/auth";
 import { StringObject } from "../types";
 import dotenv from "dotenv";
+import path from "path";
 import { Timestamp } from "firebase-admin/firestore";
+// The monorepo keeps one .env at the repo root, but a bare dotenv.config() resolves against
+// the working directory — keepqueue-server/ — and would never find it. Load the package-local
+// file first so it can still override, then fall back to the root one. dotenv never overwrites
+// a variable that is already set, so in production the systemd EnvironmentFile still wins and
+// both of these calls are silent no-ops.
 dotenv.config();
+dotenv.config({ path: path.resolve(__dirname, "../../../.env") });
 // initial firebase
 const requiredEnvVars = [
     "type",
@@ -247,7 +254,12 @@ export const verifyToken = async (authorization: string | undefined): Promise<De
         if (!token) {
             throw "validation error: Token not found";
         }
-        const res = await firebase_admin.auth().verifyIdToken(token);
+        // checkRevoked also rejects tokens belonging to a disabled account. Without it a
+        // revoked session stays valid until the token expires — up to an hour — and there is
+        // no way to force anyone out. It costs a user-record lookup per authenticated request,
+        // which is the right trade at pilot traffic; revisit if request latency matters more
+        // than being able to cut off an account immediately.
+        const res = await firebase_admin.auth().verifyIdToken(token, true);
         if (!res) {
             throw "User not found";
         }
@@ -262,8 +274,9 @@ export const verifyToken = async (authorization: string | undefined): Promise<De
 const snapshotsFirstTime: string[] = [];
 
 export const snapshot: Snapshot = (config) => {
-    return new Promise<void>(async (resolve) => {
+    return new Promise<void>((resolve, reject) => {
         const { collectionName, customName = collectionName } = config;
+        let booted = false;
 
         db.collection(config.collectionName).onSnapshot(
             (snapshot) => {
@@ -275,6 +288,7 @@ export const snapshot: Snapshot = (config) => {
                     config.extraParsers?.forEach((extraParser: OnSnapshotParsers) => {
                         extraParser.onFirstTime?.(documents, config);
                     });
+                    booted = true;
                     resolve();
                 } else {
                     const getDocsFromSnapshot = (action: string): StringObject[] => {
@@ -312,7 +326,17 @@ export const snapshot: Snapshot = (config) => {
                 }
             },
             (error) => {
-                logger.error(`Error listening to collection: ${config.collectionName}`, error);
+                logger.error(`Error listening to collection: ${collectionName}`, error);
+                if (!booted) {
+                    // Only logging here left boot waiting on a promise nothing could ever settle.
+                    reject(error);
+                    return;
+                }
+                // Firestore retries transient stream failures itself and only reaches this
+                // callback once the listener is gone for good. Staying up would mean serving a
+                // cache frozen at the moment it died, with nothing to say so; exiting lets the
+                // supervisor restart and re-listen.
+                process.exit(1);
             }
         );
     });

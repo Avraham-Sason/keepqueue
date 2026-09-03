@@ -1,5 +1,5 @@
-import { NewsletterSection, SiteHeader } from "./client-components";
-import { FeaturesSection, HeroSection, SiteFooter, TestimonialsSection } from "./static-components";
+import { SiteHeader } from "./client-components";
+import { FeaturesSection, HeroSection, SiteFooter, WhySection } from "./static-components";
 
 export default function  LandingPage() {
     return (
@@ -7,8 +7,7 @@ export default function  LandingPage() {
             <SiteHeader />
             <HeroSection />
             <FeaturesSection />
-            <TestimonialsSection />
-            <NewsletterSection />
+            <WhySection />
             <SiteFooter />
         </div>
     );

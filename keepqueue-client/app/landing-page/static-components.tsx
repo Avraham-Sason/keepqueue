@@ -1,13 +1,11 @@
 import Image from "next/image";
 import Link from "next/link";
 import { use } from "react";
-import { Calendar, Clock, MessageSquare, Users, Star, BarChart3, Building, User, Smartphone, LucideIcon } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Calendar, CalendarDays, Clock, HeartHandshake, MessageSquare, Users, Star, BarChart3, Building, User, Smartphone, LucideIcon } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { getServerTranslation, TranslationsKey } from "@translations/server";
-import CountUp from "@/components/CountUp";
 import DecryptedText from "@/components/DecryptedText";
-import TextType from "@/components/TextType";
 
 // Shared static types
 export interface FeatureStatic {
@@ -17,11 +15,9 @@ export interface FeatureStatic {
     color: string;
 }
 
-export interface TestimonialStatic {
-    nameKey: TranslationsKey;
-    businessKey: TranslationsKey;
-    image: string;
-    rating: number;
+export interface BenefitStatic {
+    icon: LucideIcon;
+    titleKey: TranslationsKey;
     textKey: TranslationsKey;
 }
 
@@ -65,42 +61,10 @@ export const FEATURES: FeatureStatic[] = [
     },
 ];
 
-export const TESTIMONIALS: TestimonialStatic[] = [
-    {
-        nameKey: "testimonial1Name",
-        businessKey: "testimonial1Business",
-        image: "/placeholder.svg?height=60&width=60",
-        rating: 5,
-        textKey: "testimonial1Text",
-    },
-    {
-        nameKey: "testimonial2Name",
-        businessKey: "testimonial2Business",
-        image: "/placeholder.svg?height=60&width=60",
-        rating: 5,
-        textKey: "testimonial2Text",
-    },
-    {
-        nameKey: "testimonial3Name",
-        businessKey: "testimonial3Business",
-        image: "/placeholder.svg?height=60&width=60",
-        rating: 5,
-        textKey: "testimonial3Text",
-    },
-];
-
-export interface StatItem {
-    number: number | string;
-    label: TranslationsKey;
-    from?: number;
-    delay?: number;
-}
-
-export const STATS: StatItem[] = [
-    { number: "98%", label: "statSatisfaction" },
-    { number: 500000, label: "statMonthlyAppointments", from: 200000 },
-    { number: "24/7", label: "statSupport" },
-    { number: 10000, label: "statBusinessesActive", from: 5000 },
+export const BENEFITS: BenefitStatic[] = [
+    { icon: Smartphone, titleKey: "why1Title", textKey: "why1Text" },
+    { icon: CalendarDays, titleKey: "why2Title", textKey: "why2Text" },
+    { icon: HeartHandshake, titleKey: "why3Title", textKey: "why3Text" },
 ];
 
 ///  SigninForms – two main CTA cards
@@ -112,7 +76,7 @@ export function SigninForms() {
                 {/* Card – Business owners */}
                 <Card className="p-6 text-center hover:shadow-lg transition-all cursor-pointer border-2 hover:border-primary">
                     <Building className="h-12 w-12 mx-auto mb-4 text-primary" />
-                    <h3 className="text-xl font-bold mb-2">{t("forBusinessOwners")}</h3>
+                    <h2 className="text-xl font-bold mb-2">{t("forBusinessOwners")}</h2>
                     <p className="text-muted-foreground mb-4">{t("manageYourBusinessEasily")}</p>
                     <Button size="lg" className="w-full" asChild>
                         <Link href="/auth/signin/business">{t("businessLogin")}</Link>
@@ -125,7 +89,7 @@ export function SigninForms() {
                 {/* Card – Customers */}
                 <Card className="p-6 text-center hover:shadow-lg transition-all cursor-pointer border-2 hover:border-primary">
                     <User className="h-12 w-12 mx-auto mb-4 text-primary" />
-                    <h3 className="text-xl font-bold mb-2">{t("customersPlural")}</h3>
+                    <h2 className="text-xl font-bold mb-2">{t("customersPlural")}</h2>
                     <p className="text-muted-foreground mb-4">{t("findAndBookEasily")}</p>
                     <Button size="lg" className="w-full" asChild>
                         <Link href="/auth/signin/customer">{t("customerLogin")}</Link>
@@ -149,43 +113,12 @@ export function FeatureCard({ feature }: { feature: FeatureStatic }) {
                 <div className={`h-12 w-12 rounded-lg ${color} flex items-center justify-center mb-4`}>
                     <Icon className="h-6 w-6" />
                 </div>
-                <CardTitle className="text-xl">{t(titleKey)}</CardTitle>
+                <h3 className="text-xl font-semibold leading-none tracking-tight">{t(titleKey)}</h3>
             </CardHeader>
             <CardContent>
                 <CardDescription className="text-base leading-relaxed">{t(descriptionKey)}</CardDescription>
             </CardContent>
         </Card>
-    );
-}
-
-/*********************************
- * StatsGrid – animated counters *
- *********************************/
-export function StatsGrid() {
-    const t = use(getServerTranslation());
-    return (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-2xl mx-auto">
-            {STATS.map((stat, index) => (
-                <div
-                    key={stat.label}
-                    className="text-center animate-in fade-in slide-in-from-bottom-3 duration-500"
-                    style={{ animationDelay: `${0.2 + index * 0.1}s` }}
-                >
-                    {typeof stat.number === "number" ? (
-                        <CountUp
-                            className="text-2xl md:text-3xl font-bold text-primary"
-                            to={stat.number}
-                            from={stat.from}
-                            delay={stat.delay}
-                            separator=","
-                        />
-                    ) : (
-                        <div className="text-2xl md:text-3xl font-bold text-primary">{stat.number}</div>
-                    )}
-                    <div className="text-sm text-muted-foreground">{t(stat.label)}</div>
-                </div>
-            ))}
-        </div>
     );
 }
 
@@ -197,14 +130,15 @@ export function HeroSection() {
             <div className="absolute inset-0 queue-pattern opacity-30" />
             <div className="container max-w-6xl mx-auto text-center relative ">
                 <div className="animate-in fade-in slide-in-from-bottom-3 duration-500 ">
+                    <span className="inline-block rounded-full border border-primary/30 bg-primary/10 px-4 py-1 text-sm font-medium text-primary mb-6">
+                        {t("heroPilotBadge")}
+                    </span>
                     <h1 className="text-4xl flex flex-col md:text-6xl font-bold tracking-tight mb-6">
                         <DecryptedText text={t("heroMain")} />
                         <DecryptedText text={t("heroSub")} className="text-primary" />
                     </h1>
                     <p className="text-xl text-muted-foreground  max-w-3xl mx-auto mb-4">{t("heroParagraph")}</p>
-                    {/* <TextType typingSpeed={40} text={t("heroParagraph")} className="text-xl text-muted-foreground mb-8 max-w-3xl mx-auto" /> */}
                     <SigninForms />
-                    <StatsGrid />
                 </div>
             </div>
         </section>
@@ -240,25 +174,25 @@ export function FeaturesSection() {
 }
 
 /*******************************************
- * TestimonialsSection – user reviews      *
+ * WhySection – what the product does today *
  *******************************************/
-export function TestimonialsSection() {
+export function WhySection() {
     const t = use(getServerTranslation());
     return (
-        <section id="testimonials" className="py-20 px-4">
+        <section id="why" className="py-20 px-4">
             <div className="container max-w-6xl mx-auto">
                 <div className="text-center mb-16">
-                    <h2 className="text-3xl md:text-4xl font-bold mb-4">{t("navTestimonials")}</h2>
-                    <p className="text-xl text-muted-foreground">{t("newsletterJoin")}</p>
+                    <h2 className="text-3xl md:text-4xl font-bold mb-4">{t("whyHeading")}</h2>
+                    <p className="text-xl text-muted-foreground">{t("whySubheading")}</p>
                 </div>
                 <div className="grid md:grid-cols-3 gap-8">
-                    {TESTIMONIALS.map((testimonial, index) => (
+                    {BENEFITS.map((benefit, index) => (
                         <div
-                            key={testimonial.nameKey}
+                            key={benefit.titleKey}
                             className="animate-in fade-in slide-in-from-bottom-3 duration-500"
                             style={{ animationDelay: `${index * 0.2}s` }}
                         >
-                            <TestimonialCard testimonial={testimonial} />
+                            <BenefitCard benefit={benefit} />
                         </div>
                     ))}
                 </div>
@@ -267,28 +201,17 @@ export function TestimonialsSection() {
     );
 }
 
-/*****************************************
- * TestimonialCard – customer feedback   *
- *****************************************/
-export function TestimonialCard({ testimonial }: { testimonial: TestimonialStatic }) {
+export function BenefitCard({ benefit }: { benefit: BenefitStatic }) {
     const t = use(getServerTranslation());
-    const { nameKey, businessKey, image, rating, textKey } = testimonial;
+    const { icon: Icon, titleKey, textKey } = benefit;
     return (
         <Card className="h-full">
             <CardContent className="pt-6">
-                <div className="flex items-center mb-4 gap-2">
-                    <Image src={image || "/placeholder.svg"} alt={t(nameKey)} width={60} height={60} className="h-12 w-12 rounded-full " />
-                    <div>
-                        <h4 className="font-semibold">{t(nameKey)}</h4>
-                        <p className="text-sm text-muted-foreground">{t(businessKey)}</p>
-                    </div>
+                <div className="h-12 w-12 rounded-lg bg-primary/10 text-primary flex items-center justify-center mb-4">
+                    <Icon className="h-6 w-6" />
                 </div>
-                <div className="flex mb-4">
-                    {[...Array(rating)].map((_, i) => (
-                        <Star key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                    ))}
-                </div>
-                <p className="text-muted-foreground italic">"{t(textKey)}"</p>
+                <h3 className="text-xl font-semibold mb-2">{t(titleKey)}</h3>
+                <p className="text-muted-foreground leading-relaxed">{t(textKey)}</p>
             </CardContent>
         </Card>
     );
@@ -325,9 +248,9 @@ export function SiteFooter() {
     return (
         <footer className="border-t py-12 px-4 bg-background">
             <div className="container max-w-6xl mx-auto">
-                <div className="grid md:grid-cols-4 gap-8 mb-8">
+                <div className="grid md:grid-cols-2 gap-8 mb-8">
                     <div>
-                        <div className="flex items-center space-x-2 mb-4">
+                        <div className="flex items-center gap-2 mb-4">
                             <div className="h-8 w-8 rounded-lg flex items-center justify-center">
                                 <Image src="/logo.png" alt="logo" width={32} height={32} />
                             </div>
@@ -338,30 +261,14 @@ export function SiteFooter() {
                     <FooterColumn
                         title="footerProduct"
                         links={[
-                            { href: "#features", label: "footerFeatures" },
-                            { href: "#pricing", label: "footerPricing" },
+                            { href: "/#features", label: "footerFeatures" },
+                            { href: "/#why", label: "navWhy" },
                             { href: "/marketplace", label: "footerMarketplace" },
-                        ]}
-                    />
-                    <FooterColumn
-                        title="footerSupport"
-                        links={[
-                            { href: "/help", label: "footerHelpCenter" },
-                            { href: "/contact", label: "footerContact" },
-                            { href: "/api", label: "footerAPI" },
-                        ]}
-                    />
-                    <FooterColumn
-                        title="footerCompany"
-                        links={[
-                            { href: "/about", label: "footerAbout" },
-                            { href: "/careers", label: "footerCareers" },
-                            { href: "/blog", label: "footerBlog" },
                         ]}
                     />
                 </div>
                 <div className="flex flex-col md:flex-row justify-between items-center pt-8 border-t">
-                    <div className="flex gap-2 text-sm text-muted-foreground mb-4 md:mb-0">
+                    <div className="flex gap-4 text-sm text-muted-foreground mb-4 md:mb-0">
                         <Link href="/privacy" className="hover:text-foreground transition-colors">
                             {t("privacyPolicy")}
                         </Link>

@@ -28,40 +28,39 @@ export const getDocumentById = async (collection_path: string, doc_id: string) =
     }
 };
 
+/**
+ * Unlike getDocumentById, this tells a missing document (null) apart from a failed read
+ * (throws). The auth flow needs that distinction: a genuinely absent profile means the
+ * account is not provisioned, while a permission or network error must not be mistaken
+ * for one and sign a valid user out.
+ */
+export const getDocumentByIdOrThrow = async (collection_path: string, doc_id: string) => {
+    const doc_snap = await getDoc(doc(db, collection_path, doc_id));
+    return doc_snap.exists() ? simpleExtractData(doc_snap) : null;
+};
+
+/**
+ * The three writers below reject when the write does not land. Swallowing the error and
+ * answering `false` made every `try/catch` around them dead code and every caller ignored the
+ * boolean, so a rules-denied write closed its dialog as if it had saved. The `true` they
+ * resolve with is vestigial — callers that still read it keep compiling.
+ */
 export const setDocument = async (collection_path: string, doc_id: string, data: DocumentData) => {
-    try {
-        const doc_ref = doc(db, collection_path, doc_id);
-        await setDoc(doc_ref, data, { merge: true });
-        return true;
-    } catch (error) {
-        console.error(`Failed to create document by id: ${doc_id} in collection: ${collection_path}`, { error, data });
-        return false;
-    }
+    await setDoc(doc(db, collection_path, doc_id), data, { merge: true });
+    return true;
 };
 
 export const addDocument = async (collection_path: string, data: DocumentData, include_id = false) => {
-    try {
-        const col_ref = collection(db, collection_path);
-        const doc_ref = await addDoc(col_ref, data);
-        if (include_id) {
-            await setDoc(doc_ref, { ...data, id: doc_ref.id }, { merge: true });
-        }
-        return true;
-    } catch (error) {
-        console.error(`Failed to create document in collection: ${collection_path}`, error);
-        return false;
+    const doc_ref = await addDoc(collection(db, collection_path), data);
+    if (include_id) {
+        await setDoc(doc_ref, { ...data, id: doc_ref.id }, { merge: true });
     }
+    return true;
 };
 
 export const deleteDocument = async (collection_path: string, doc_id: string) => {
-    try {
-        const doc_ref = doc(db, collection_path, doc_id);
-        await deleteDoc(doc_ref);
-        return true;
-    } catch (error) {
-        console.error(`Failed to delete document with id ${doc_id} from collection ${collection_path}`, error);
-        return false;
-    }
+    await deleteDoc(doc(db, collection_path, doc_id));
+    return true;
 };
 
 export const queryDocument = async (

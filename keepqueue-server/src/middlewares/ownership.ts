@@ -105,3 +105,32 @@ export const requireSelfOrBusinessOwner = (userIdField: string = "userId") => {
         res.status(403).json({ success: false, error: "You may only act on your own behalf" });
     };
 };
+
+/**
+ * Only the business decides when it is closed.
+ *
+ * `type` and `source` arrive in the request body, and requireSelfOrBusinessOwner deliberately
+ * lets a customer through on their own userId so they can book for themselves. Together that
+ * meant a customer could POST a VACATION event spanning months against any businessId — and
+ * because overlap detection blocks on every non-terminal event regardless of type, a single
+ * such event empties that business's availability permanently.
+ *
+ * A plain web booking still goes through the guard beside this one; anything else is the
+ * business's own act and needs the business's own token.
+ */
+export const requireOwnerForNonBookingEvent = () => {
+    return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+        const { type, source } = req.body ?? {};
+        const isPlainBooking = (type === undefined || type === "APPOINTMENT") && (source === undefined || source === "web");
+        if (isPlainBooking) {
+            next();
+            return;
+        }
+        const uid = req.user?.uid;
+        if (!uid || !ownsBusiness(uid, businessIdFrom.body(req.body))) {
+            res.status(403).json({ success: false, error: "Only the business may create this kind of event" });
+            return;
+        }
+        next();
+    };
+};

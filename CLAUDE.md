@@ -19,11 +19,17 @@ The client and server were separate repositories until they were merged; the arc
 
 ## Commands
 
+### Setup
+Both apps read **one `.env` at the repo root**. Copy `.env.example` and fill it in — the client half is the
+`NEXT_PUBLIC_*` Firebase web config, the server half is the Firebase Admin service account. Next only reads env
+files from its own package, so `keepqueue-client/next.config.ts` loads `../.env` explicitly; on Vercel the
+platform injects the vars and that load is a no-op.
+
 ### Client (`keepqueue-client/`)
 ```bash
 pnpm dev        # Dev server with Turbopack
 pnpm build      # Production build
-pnpm lint       # ESLint
+pnpm lint       # ESLint (flat config in eslint.config.mjs; `next lint` was removed in Next 16)
 ```
 
 ### Server (`keepqueue-server/`)
@@ -47,6 +53,14 @@ npm run logs | status | health
 
 `infra/deploy.sh` runs on the host: fetch, `pnpm install --frozen-lockfile`, build, and only then restart and poll `/health`. A failure before the restart leaves the running service untouched.
 
+### Firestore rules tests
+```bash
+cd rules-test && npm test    # 29 assertions against the Firestore emulator
+```
+Run this before `deploy:rules` — the rules are the one artefact where a mistake locks real users
+out, and the suite asserts both that each hole stays shut and that the product still works. It
+pins `firebase-tools@13` because the current release needs JDK 21 and this machine has 17.
+
 ---
 
 ## Architecture
@@ -67,6 +81,14 @@ browser ──→ api.keepqueue.com   (Express, guarded by authGuard + ownership
 
 Anything that changes access control has to be considered on both paths. `firestore.rules` is currently shaped around the collections the client still writes to directly; when those writes move behind the API, the rules can tighten to reads only.
 
+**A `/data/*` route is not automatically safe because it is behind `authGuard()`.** A signed-in
+caller is still a stranger to everyone else's records, so a route must derive its scope from
+`req.user`, never from the request body. `/data/getCollection` was the counter-example — it
+took the collection name and filters from the caller — and was deleted rather than patched.
+`/data/getBusiness` is the other shape worth knowing: it is deliberately public, uses
+`attachUserIfPresent()` to learn who is asking without rejecting anonymous callers, and returns
+the full record only to the business's owner.
+
 ### Server: In-Memory Cache
 The server loads all Firestore collections into a singleton `CacheManager` on startup — there are **no per-request DB queries**. Data endpoints filter and transform this in-memory cache.
 
@@ -76,12 +98,32 @@ The server loads all Firestore collections into a singleton `CacheManager` on st
 
 The cache is per-process. Any correctness check that reads it (overlap detection, rate limiting) is only as strong as a single instance, and is not safe to rely on if the server is ever scaled out.
 
+### Identity: the users document id IS the Firebase Auth uid
+
+This is load-bearing in three places at once, and breaking any one of them breaks the account:
+
+- **`firestore.rules`** permits `users/{userId}` only when `userId == request.auth.uid`. A collection query filtered on `email` cannot prove that constraint, so Firestore rejects the whole query — profiles must be read **by document id**, never looked up by email.
+- **Every server ownership check** resolves users by uid: `authGuard`, `requireBusinessOwnership`, `requireSelfOrBusinessOwner`, `requireRecordAccess`, and the `usersMap` cache, which is keyed by document id.
+- **Both writers** honour it: client signup uses `setDocument("users", uid, ...)` and the admin endpoint uses `db.collection("users").doc(authUser.uid).set(...)`.
+
+Profiles created any other way (the old `addDoc` path, which assigns a random id) are invisible to the server and unreadable by their own owner. `keepqueue-server/scripts/migrate-user-ids.ts` re-keys legacy documents and rewrites the references that point at the old id — run it (dry run first, then `--apply`) before deploying rules to a database that predates this contract.
+
+### Operator account
+
+There is exactly one admin, created by hand:
+
+```bash
+cd keepqueue-server && npm run admin:create -- admin@keepqueue.com 'a-long-password'
+```
+
+It sets the `admin` custom claim and writes `users/{uid}` with `type: "admin"`. The claim is the authority; the document only tells the client to route the session to `/admin`. The operator must sign out and back in for the new claim to appear in their ID token. Businesses and their owners are created from `/admin` — there is no self-serve business creation during the free pilot.
+
 ### Server: Middleware
 Four middlewares in `src/middlewares/`, applied per route in this order:
 
 | Middleware | File | What it proves |
 |---|---|---|
-| `authGuard(role?)` | `authGuard.ts` | the caller holds a valid Firebase token, and optionally that their account is `business` / `customer` / `staff` |
+| `authGuard(role?)` | `authGuard.ts` | the caller holds a valid Firebase token, and optionally that their account is `business` / `customer` / `staff` / `admin` |
 | `validateBody(schema)` | `index.ts` | the body matches a Zod schema; answers 400 otherwise |
 | `requireBusinessOwnership(resolver?)` | `ownership.ts` | the caller owns the business the request names |
 | `requireRecordAccess(list, idField)` | `ownership.ts` | the caller is the record's own customer, or the business it belongs to |
@@ -90,6 +132,8 @@ Four middlewares in `src/middlewares/`, applied per route in this order:
 
 **`authGuard` proves identity and account type, never ownership.** Without an ownership check beside it, any business owner can reach any other business's data with a valid token of their own. Every route that names a business runs both.
 
+`authGuard("admin")` is the exception: it reads the `admin` **custom claim** on the Firebase token, not `users/{uid}.type`. A user can write their own profile document, so `type` is not a security boundary; a claim can only be set by the Admin SDK. Non-admin roles still resolve through the users document, and on a cache miss `authGuard` reads through to Firestore so a just-created account does not get a spurious 403 while the snapshot listener catches up.
+
 The ownership layer resolves the owning business from whichever identifier the route carries — `businessId` directly, or via `serviceId`, `staffId`, `reviewId`, `calendarEventId`, `waitItemId`.
 
 ### Server Route Structure
@@ -97,17 +141,17 @@ The ownership layer resolves the owning business from whichever identifier the r
 Public (no token) — the public booking page depends on these:
 ```
 GET  /                                   GET  /actions/    GET  /data/
-POST /actions/login                      ← verifies a token itself
-POST /data/getBusiness
-POST /data/getAvailabilityByServiceId
-POST /data/getBusinessReviews
+POST /data/getBusiness                   ← public shape; the owner's token unlocks the full record
+POST /data/getAvailabilityByServiceId    ← optional staffId narrows it to one person's calendar
+POST /data/getBusinessReviews            ← non-flagged only, reviewer reduced to a first name
 POST /data/getBusinessRatings
+POST /data/searchBusinesses              ← the marketplace directory
 ```
 
 Authenticated:
 ```
-POST /data/getCollection                 authGuard()
-POST /data/getUserById                   authGuard()
+POST /data/getMyAppointments             authGuard()                    ← scope comes from the token
+POST /data/getUserById                   authGuard() + self-or-own-customer
 POST /actions/businesses/appointments/create      authGuard() + requireSelfOrBusinessOwner
 POST /actions/businesses/appointments/cancel      authGuard() + requireRecordAccess
 POST /actions/businesses/appointments/reschedule  authGuard() + requireRecordAccess
@@ -128,7 +172,81 @@ POST /data/getBusinessCustomers|getBusinessStaff|getBusinessWaitlist
 POST /data/getBusinessAppointments|getBusinessAnalytics
 ```
 
+Operator only — all `authGuard("admin")`, which checks the Firebase custom claim:
+```
+POST /actions/admin/overview                 ← every business and user, for the admin panel
+POST /actions/admin/users/create             ← creates the Auth account and users/{uid} together
+POST /actions/admin/businesses/create        ← creates the business and links it to its owner
+POST /actions/admin/businesses/setActive
+```
+
 All route handlers follow the `RouterService = (req, res, next) => void` pattern; errors call `next(error)`. Responses use `jsonOK(data)` / `jsonFailed(error)` wrappers.
+
+**Errors:** throw an `AppError` (`helpers/appError.ts`) when the message is written for the
+caller — the global handler shows those with their status. Everything else is answered with a
+flat 500 `Internal server error`, because a raw Firestore error carries the project id and
+document path and this handler is reachable from unauthenticated routes.
+
+**Rate limits:** `rateLimiter(windowMs, max, scope, perUser)`. The `scope` matters — without it
+every limiter shares one counter per IP and a strict per-route ceiling is spent by traffic to
+unrelated routes. `createLimiter()` (10/min, keyed by uid) guards every endpoint that mints a
+document, so the ceiling follows the account rather than the network.
+
+### Staff scheduling: a business is several resources, not one
+
+`CalendarEvent.staffId` decides whose calendar an event occupies.
+
+- **With `staffId`** the event blocks only that person, which is what lets two staff take the
+  same hour.
+- **Without it** the event blocks the whole business. That covers vacation and holiday blocks,
+  and also every appointment made before staff scheduling existed — old data keeps behaving
+  exactly as it did.
+
+`StaffMember.serviceIds` says who can perform what; **an empty list means "anything", not
+"nothing"** — no staff record has ever had it filled, and reading it strictly would make every
+existing person ineligible overnight. Availability for a service is the union across eligible
+staff, so a slot is offered while anyone can take it. When a booking names no staff member the
+server picks the first free eligible one *inside the transaction*, so the choice cannot go stale
+between the check and the write.
+
+### Firestore indexes
+
+`findOverlappingEvent` queries `calendar` by `businessId` + `end >`, which needs the composite
+index in `firestore.indexes.json`. **`deploy:rules` deploys rules and indexes together** — an
+index that is missing or still building makes every booking fail with `FAILED_PRECONDITION`, and
+a fresh index takes a few minutes to build after deploy.
+
+### Notifications
+
+`src/notifications/` sends the booking confirmation, the cancellation notice, and a reminder a
+day before. Delivery goes to Resend over plain HTTPS — one POST is not worth an SDK in a server
+holding Firebase admin credentials.
+
+**It is off until configured.** With no `resend_api_key` / `notification_from` the attempt is
+still recorded in `notification_logs` with status `FAILED` and a "not configured" reason, so the
+feature can be deployed and inspected before signing up to a provider. Set both to turn it on.
+
+Reminders are an in-process sweep every 15 minutes over the cache (`notifications/reminders.ts`),
+not a job queue. A send is claimed by creating `notification_logs/{eventId}_reminder` with
+`create()`, which fails if it exists — so a restart, or a second instance, cannot send twice.
+`npm run check:reminders` covers the window with no credentials.
+
+A booking is never failed by a notification: every send is fire-and-forget behind
+`notifyInBackground`.
+
+### CORS and preview deployments
+
+`src/helpers/cors.ts` holds the origin rules, deliberately free of Firebase and Express imports
+so `npm run check:cors` can exercise them without credentials.
+
+- `allowed_origins` **replaces** the built-in list (`keepqueue.com`, `www.keepqueue.com`,
+  `localhost:3000/3001`); it does not add to it.
+- `vercel_preview_scope` is the trailing segment of a Vercel preview URL — the `acme` in
+  `https://keepqueue-abc123-acme.vercel.app`. **Unset, preview origins are refused.** The
+  pattern used to be `/^https:\/\/keepqueue-[a-z0-9-]+\.vercel\.app$/`, which matches any
+  Vercel project whose name starts with `keepqueue` — including one an attacker creates.
+- A request with no `Origin` header is allowed: CORS governs browsers, not curl or
+  server-to-server calls. Bearer tokens are the actual authentication.
 
 `express` runs behind Caddy in production, so `trust proxy` is set to 1. The per-IP rate limiter reads `X-Forwarded-For` through it, and Caddy overwrites rather than appends that header so a client cannot spoof it. Both halves are required.
 

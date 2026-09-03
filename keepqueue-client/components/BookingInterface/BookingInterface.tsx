@@ -15,7 +15,8 @@ import Link from "next/link";
 import { useLanguage } from "@/hooks";
 import moment from "moment-timezone";
 import { useBookingState, type BusinessDisplay } from "./hooks";
-import type { CalendarEvent, Service } from "@/lib/types";
+import { WaitlistForm } from "./WaitlistForm";
+import type { CalendarEvent, ReviewWithUser, Service, StaffMember } from "@/lib/types";
 import Image from "next/image";
 import { CustomerHeader } from "@/app/customer/dashboard/customer-header";
 import { useAuthStore, useSettingsStore } from "@/lib/store";
@@ -57,10 +58,16 @@ const buildGoogleCalendarUrl = ({ title, details, location, startMs, endMs }: Go
 export function BookingInterface({ businessId }: BookingInterfaceProps) {
     const {
         business,
+        isBusinessLoaded,
+        businessLoadFailed,
         services,
+        reviews,
         selectedService,
         setSelectedService,
         selectedServiceData,
+        staffOptions,
+        selectedStaffId,
+        setSelectedStaffId,
         availableDates,
         availableTimes,
         totalPrice,
@@ -79,10 +86,12 @@ export function BookingInterface({ businessId }: BookingInterfaceProps) {
         setCustomerInfo,
         customerAppointments,
         isLoadingAvailability,
+        availabilityError,
         isCancellingAppointment,
         cancellingAppointmentId,
         handleCancelAppointment,
     } = useBookingState(businessId);
+    const bookingUser = useAuthStore.user();
 
     return (
         <div className="size-full p-4">
@@ -106,11 +115,24 @@ export function BookingInterface({ businessId }: BookingInterfaceProps) {
                 <ProgressSteps step={step} />
 
                 {step === 1 && (
-                    <ServicesStep services={services} selectedService={selectedService} setSelectedService={setSelectedService} onNext={handleNext} />
+                    <ServicesStep
+                        services={services}
+                        isBusinessLoaded={isBusinessLoaded}
+                        businessLoadFailed={businessLoadFailed}
+                        selectedService={selectedService}
+                        setSelectedService={setSelectedService}
+                        onNext={handleNext}
+                    />
                 )}
 
                 {step === 2 && (
                     <DateTimeStep
+                        businessId={businessId}
+                        userId={bookingUser?.id}
+                        selectedServiceData={selectedServiceData}
+                        staffOptions={staffOptions}
+                        selectedStaffId={selectedStaffId}
+                        setSelectedStaffId={setSelectedStaffId}
                         availableDates={availableDates}
                         selectedDate={selectedDate}
                         setSelectedDate={setSelectedDate}
@@ -118,6 +140,7 @@ export function BookingInterface({ businessId }: BookingInterfaceProps) {
                         selectedTime={selectedTime}
                         setSelectedTime={setSelectedTime}
                         isLoadingAvailability={isLoadingAvailability}
+                        availabilityError={availabilityError}
                         onBack={handleBack}
                         onNext={handleNext}
                     />
@@ -153,6 +176,8 @@ export function BookingInterface({ businessId }: BookingInterfaceProps) {
                         selectedTime={selectedTime}
                     />
                 )}
+
+                <BusinessReviews reviews={reviews} rating={business.rating} count={business.reviews} />
             </div>
         </div>
     );
@@ -170,33 +195,50 @@ function BusinessHeader({ business }: { business: BusinessDisplay }) {
                         <div className="space-y-3 ">
                             <div>
                                 <h1 className="text-2xl font-bold">{business.name}</h1>
-                                <p className="text-muted-foreground">{business.description}</p>
+                                {business.description && <p className="text-muted-foreground">{business.description}</p>}
                             </div>
-                            <div className="flex items-center gap-2">
-                                <div className="flex items-center gap-1">
-                                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                                    <span className="font-medium">{business.rating}</span>
-                                </div>
-                                <span className="text-muted-foreground">
-                                    ({business.reviews} {t("reviews")})
-                                </span>
-                                <Badge variant="secondary" className="bg-green-100 text-green-800">
-                                    {t("openNow")}
-                                </Badge>
+                            <div className="flex items-center gap-2 flex-wrap">
+                                {business.reviews > 0 ? (
+                                    <>
+                                        <div className="flex items-center gap-1">
+                                            <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                                            <span className="font-medium">{business.rating.toFixed(1)}</span>
+                                        </div>
+                                        <span className="text-muted-foreground">
+                                            ({business.reviews} {t("reviews")})
+                                        </span>
+                                    </>
+                                ) : (
+                                    <span className="text-muted-foreground">{t("noReviewsYet")}</span>
+                                )}
+                                {business.isOpenNow !== null && (
+                                    <Badge
+                                        variant="secondary"
+                                        className={business.isOpenNow ? "bg-green-100 text-green-800" : "bg-muted text-muted-foreground"}
+                                    >
+                                        {business.isOpenNow ? t("openNow") : t("closedNow")}
+                                    </Badge>
+                                )}
                             </div>
                             <div className="space-y-1 text-sm text-muted-foreground">
-                                <div className="flex items-center gap-2">
-                                    <MapPin className="h-4 w-4" />
-                                    <span>{business.address}</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <Phone className="h-4 w-4" />
-                                    <span>{business.phone}</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <Clock className="h-4 w-4" />
-                                    <span>{business.workingHours}</span>
-                                </div>
+                                {business.address && (
+                                    <div className="flex items-center gap-2">
+                                        <MapPin className="h-4 w-4" />
+                                        <span>{business.address}</span>
+                                    </div>
+                                )}
+                                {business.phone && (
+                                    <div className="flex items-center gap-2">
+                                        <Phone className="h-4 w-4" />
+                                        <span>{business.phone}</span>
+                                    </div>
+                                )}
+                                {business.workingHours && (
+                                    <div className="flex items-start gap-2">
+                                        <Clock className="h-4 w-4 mt-0.5 shrink-0" />
+                                        <span className="whitespace-pre-line">{business.workingHours}</span>
+                                    </div>
+                                )}
                             </div>
                         </div>
                         {business.image && (
@@ -331,7 +373,7 @@ function ExistingAppointments({
                                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
                                     <Button asChild variant="secondary" size="sm">
                                         <a href={googleCalendarUrl} target="_blank" rel="noreferrer">
-                                            <Calendar className="h-4 w-4 mr-2" />
+                                            <Calendar className="h-4 w-4 me-2" />
                                             {t("addToGoogleCalendar")}
                                         </a>
                                     </Button>
@@ -343,9 +385,9 @@ function ExistingAppointments({
                                         onClick={() => onCancel(appointment.id)}
                                     >
                                         {isCancellingCurrent ? (
-                                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                            <Loader2 className="h-4 w-4 me-2 animate-spin" />
                                         ) : (
-                                            <XCircle className="h-4 w-4 mr-2" />
+                                            <XCircle className="h-4 w-4 me-2" />
                                         )}
                                         {t("cancel")}
                                     </Button>
@@ -366,14 +408,17 @@ function ExistingAppointments({
 
 interface ServicesStepProps {
     services: Service[];
+    isBusinessLoaded: boolean;
+    businessLoadFailed: boolean;
     selectedService: string | null;
     setSelectedService: (id: string | null) => void;
     onNext: () => void;
 }
 
 // ========================= Services Step 1 =========================
-function ServicesStep({ services, selectedService, setSelectedService, onNext }: ServicesStepProps) {
-    const { t } = useLanguage();
+function ServicesStep({ services, isBusinessLoaded, businessLoadFailed, selectedService, setSelectedService, onNext }: ServicesStepProps) {
+    const { t, isRtl } = useLanguage();
+    const ForwardIcon = isRtl ? ArrowLeft : ArrowRight;
     return (
         <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.3 }}>
             <Card>
@@ -382,38 +427,53 @@ function ServicesStep({ services, selectedService, setSelectedService, onNext }:
                     <CardDescription>{t("selectAService")}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                    {businessLoadFailed && (
+                        <div role="alert" className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                            {t("businessLoadError")}
+                        </div>
+                    )}
+                    {!isBusinessLoaded && !businessLoadFailed && (
+                        <div className="flex items-center justify-center py-8">
+                            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                        </div>
+                    )}
+                    {isBusinessLoaded && services.length === 0 && (
+                        <p className="text-center py-6 text-muted-foreground">{t("noServicesAvailable")}</p>
+                    )}
                     {services.map((service) => (
-                        <div
+                        <button
                             key={service.id ?? service.name}
-                            className={`relative p-3 sm:p-4 border rounded-lg cursor-pointer transition-all hover:shadow-md ${
+                            type="button"
+                            aria-pressed={selectedService === service.id}
+                            className={`relative w-full text-start p-3 sm:p-4 border rounded-lg cursor-pointer transition-all hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
                                 selectedService === service.id ? "border-primary bg-primary/5 shadow-md" : "hover:bg-muted/50"
                             }`}
                             onClick={() => setSelectedService(service.id ?? null)}
                         >
-                            <div className="flex items-center justify-between">
-                                <div className="space-y-2">
-                                    <h3 className="font-medium text-base sm:text-lg">{service.name}</h3>
-                                    <div className="flex items-center gap-4 text-sm">
+                            <span className="flex items-center justify-between">
+                                <span className="flex flex-col gap-2">
+                                    <span className="font-medium text-base sm:text-lg">{service.name}</span>
+                                    <span className="flex items-center gap-4 text-sm">
                                         <span className="flex items-center gap-1">
                                             <Clock className="h-4 w-4" />
                                             {service.durationMin} {t("minutes")}
                                         </span>
                                         <span className="font-medium text-base sm:text-lg">₪{service.price}</span>
-                                    </div>
-                                </div>
+                                    </span>
+                                </span>
                                 {selectedService === service.id && (
-                                    <div className="flex-shrink-0">
-                                        <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center">
+                                    <span className="flex-shrink-0">
+                                        <span className="w-6 h-6 rounded-full bg-primary flex items-center justify-center">
                                             <CheckCircle className="h-4 w-4 text-primary-foreground" />
-                                        </div>
-                                    </div>
+                                        </span>
+                                    </span>
                                 )}
-                            </div>
-                        </div>
+                            </span>
+                        </button>
                     ))}
                     <Button className="w-full" size="lg" disabled={!selectedService} onClick={onNext}>
                         {t("goToSelectDateTime")}
-                        <ArrowLeft className="h-4 w-4 mr-2" />
+                        <ForwardIcon className="h-4 w-4 ms-2" />
                     </Button>
                 </CardContent>
             </Card>
@@ -431,6 +491,12 @@ interface TimeOption {
     available: boolean;
 }
 interface DateTimeStepProps {
+    businessId: string;
+    userId?: string;
+    selectedServiceData?: Service;
+    staffOptions: StaffMember[];
+    selectedStaffId: string | null;
+    setSelectedStaffId: (staffId: string | null) => void;
     availableDates: DateOption[];
     selectedDate: string;
     setSelectedDate: (date: string) => void;
@@ -438,12 +504,56 @@ interface DateTimeStepProps {
     selectedTime: string;
     setSelectedTime: (time: string) => void;
     isLoadingAvailability: boolean;
+    availabilityError: string | null;
     onBack: () => void;
     onNext: () => void;
 }
 
+
+interface StaffChoiceProps {
+    label: string;
+    photoURL?: string;
+    color?: string;
+    selected: boolean;
+    onSelect: () => void;
+}
+
+function StaffChoice({ label, photoURL, color, selected, onSelect }: StaffChoiceProps) {
+    const initials = label
+        .split(" ")
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((part) => part[0])
+        .join("")
+        .toUpperCase();
+
+    return (
+        <button
+            type="button"
+            role="radio"
+            aria-checked={selected}
+            onClick={onSelect}
+            className={`flex items-center gap-2 rounded-full border px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                selected ? "border-primary bg-primary/10 text-foreground" : "border-input hover:bg-accent"
+            }`}
+        >
+            <Avatar className="size-6">
+                {photoURL ? <AvatarImage src={photoURL} alt="" /> : null}
+                <AvatarFallback style={color ? { backgroundColor: color } : undefined}>{initials || "?"}</AvatarFallback>
+            </Avatar>
+            {label}
+        </button>
+    );
+}
+
 // ========================= DateTime Step 2 =========================
 function DateTimeStep({
+    businessId,
+    userId,
+    selectedServiceData,
+    staffOptions,
+    selectedStaffId,
+    setSelectedStaffId,
     availableDates,
     selectedDate,
     setSelectedDate,
@@ -451,10 +561,13 @@ function DateTimeStep({
     selectedTime,
     setSelectedTime,
     isLoadingAvailability,
+    availabilityError,
     onBack,
     onNext,
 }: DateTimeStepProps) {
-    const { t } = useLanguage();
+    const { t, isRtl } = useLanguage();
+    const ForwardIcon = isRtl ? ArrowLeft : ArrowRight;
+    const BackIcon = isRtl ? ArrowRight : ArrowLeft;
     const onDateClick = (dateOption: DateOption) => {
         if (!dateOption.available) {
             return;
@@ -473,16 +586,48 @@ function DateTimeStep({
                     <CardDescription>{/* Selected service summary handled in parent header if needed */}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6 ">
+                    {availabilityError && (
+                        <div role="alert" aria-live="polite" className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                            {availabilityError}
+                        </div>
+                    )}
+                    {staffOptions.length > 1 && (
+                        <div className="space-y-3">
+                            <Label className="text-base font-medium" id="staff-picker-label">
+                                {t("chooseStaffMember")}
+                            </Label>
+                            <div role="radiogroup" aria-labelledby="staff-picker-label" className="flex flex-wrap gap-2">
+                                <StaffChoice
+                                    label={t("anyStaffMember")}
+                                    selected={selectedStaffId === null}
+                                    onSelect={() => setSelectedStaffId(null)}
+                                />
+                                {staffOptions.map((member) => (
+                                    <StaffChoice
+                                        key={member.id}
+                                        label={`${member.firstName} ${member.lastName}`.trim()}
+                                        photoURL={member.photoURL}
+                                        color={member.color}
+                                        selected={selectedStaffId === member.id}
+                                        onSelect={() => setSelectedStaffId(member.id ?? null)}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                    )}
                     <div className="space-y-3 ">
                         <Label className="text-base font-medium">{t("selectDate")}</Label>
                         {isLoadingAvailability ? (
                             <div className="flex items-center justify-center py-8">
                                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                                <span className="ml-2 text-muted-foreground">{t("loadingAvailability") }</span>
+                                <span className="ms-2 text-muted-foreground">{t("loadingAvailability") }</span>
                             </div>
                         ) : availableDates.length === 0 ? (
-                            <div className="text-center py-8 text-muted-foreground">
-                                {t("noAvailableDates") }
+                            <div className="space-y-4 py-4">
+                                <p className="text-center text-muted-foreground">{t("noAvailableDates")}</p>
+                                {selectedServiceData && userId ? (
+                                    <WaitlistForm businessId={businessId} userId={userId} service={selectedServiceData} />
+                                ) : null}
                             </div>
                         ) : (
                             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
@@ -508,7 +653,7 @@ function DateTimeStep({
                             {isLoadingAvailability ? (
                                 <div className="flex items-center justify-center py-8">
                                     <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                                    <span className="ml-2 text-muted-foreground">{t("loadingAvailability")}</span>
+                                    <span className="ms-2 text-muted-foreground">{t("loadingAvailability")}</span>
                                 </div>
                             ) : availableTimes.length === 0 ? (
                                 <div className="text-center py-8 text-muted-foreground">
@@ -535,12 +680,12 @@ function DateTimeStep({
 
                     <div className="flex flex-col sm:flex-row gap-3">
                         <Button variant="outline" size="lg" onClick={onBack} className="bg-transparent w-full sm:w-auto">
-                            <ArrowRight className="h-4 w-4 mr-2" />
+                            <BackIcon className="h-4 w-4 me-2" />
                             {t("back")}
                         </Button>
                         <Button className="w-full sm:flex-1" size="lg" disabled={!selectedDate || !selectedTime} onClick={onNext}>
                             {t("goToPersonalDetails")}
-                            <ArrowLeft className="h-4 w-4 mr-2" />
+                            <ForwardIcon className="h-4 w-4 ms-2" />
                         </Button>
                     </div>
                 </CardContent>
@@ -589,7 +734,8 @@ function CustomerDetailsStep({
     bookingError,
     onConfirm,
 }: CustomerDetailsStepProps) {
-    const { t } = useLanguage();
+    const { t, isRtl } = useLanguage();
+    const BackIcon = isRtl ? ArrowRight : ArrowLeft;
     const user = useAuthStore.user();
     const isAuthenticated = Boolean(user);
 
@@ -736,7 +882,7 @@ function CustomerDetailsStep({
 
             <div className="flex flex-col sm:flex-row gap-3 mt-3">
                 <Button variant="outline" size="lg" onClick={onBack} className="bg-transparent w-full sm:w-auto">
-                    <ArrowRight className="h-4 w-4 mr-2" />
+                    <BackIcon className="h-4 w-4 me-2" />
                     {t("back")}
                 </Button>
                 <Button
@@ -747,17 +893,75 @@ function CustomerDetailsStep({
                 >
                     {isBooking ? (
                         <>
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            <Loader2 className="h-4 w-4 me-2 animate-spin" />
                             {t("bookingInProgress")}
                         </>
                     ) : (
                         <>
-                            <CheckCircle className="h-4 w-4 mr-2" />
+                            <CheckCircle className="h-4 w-4 me-2" />
                             {t("confirmBooking")}
                         </>
                     )}
                 </Button>
             </div>
+        </motion.div>
+    );
+}
+
+function StarRow({ value, className }: { value: number; className?: string }) {
+    return (
+        <span className={`flex items-center gap-0.5 ${className ?? ""}`}>
+            {[1, 2, 3, 4, 5].map((star) => (
+                <Star
+                    key={star}
+                    className={`h-4 w-4 ${star <= Math.round(value) ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground/40"}`}
+                />
+            ))}
+        </span>
+    );
+}
+
+function BusinessReviews({ reviews, rating, count }: { reviews: ReviewWithUser[]; rating: number; count: number }) {
+    const { t } = useLanguage();
+    const userTimeZone = useSettingsStore.userTimeZone();
+
+    if (count === 0) {
+        return null;
+    }
+
+    return (
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+            <Card>
+                <CardHeader>
+                    <CardTitle>{t("customerReviews")}</CardTitle>
+                    <CardDescription className="flex items-center gap-2">
+                        <StarRow value={rating} />
+                        <span>
+                            {rating.toFixed(1)} · {count} {t("reviews")}
+                        </span>
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3 max-h-96 overflow-y-auto">
+                    {reviews.map((review) => (
+                        <div key={review.id} className="border rounded-lg p-3 space-y-2">
+                            <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2">
+                                    <Avatar className="h-8 w-8">
+                                        <AvatarImage src={review.user?.photoURL} />
+                                        <AvatarFallback>{review.user?.firstName?.[0] ?? "?"}</AvatarFallback>
+                                    </Avatar>
+                                    <span className="font-medium text-sm">{review.user?.firstName || t("anonymousReviewer")}</span>
+                                </div>
+                                <span className="text-xs text-muted-foreground">
+                                    {timestampToString(review.created, { format: "DD/MM/YY", tz: userTimeZone })}
+                                </span>
+                            </div>
+                            <StarRow value={review.rating} />
+                            {review.text && <p className="text-sm text-muted-foreground">{review.text}</p>}
+                        </div>
+                    ))}
+                </CardContent>
+            </Card>
         </motion.div>
     );
 }
@@ -833,7 +1037,7 @@ function ConfirmationStep({
                             <p className="text-muted-foreground">{t("bookingSuccessDescription")}</p>
                         </div>
 
-                        <div className="bg-muted/50 p-6 rounded-lg text-right space-y-2">
+                        <div className="bg-muted/50 p-6 rounded-lg text-start space-y-2">
                             <h3 className="font-semibold mb-4">{t("appointmentDetails")}:</h3>
                             <p>
                                 <strong>{t("businessLabel")}:</strong> {businessName}
@@ -848,19 +1052,23 @@ function ConfirmationStep({
                             <p>
                                 <strong>{t("timeLabel")}:</strong> {selectedTime}
                             </p>
-                            <p>
-                                <strong>{t("businessAddress")}:</strong> {businessAddress}
-                            </p>
-                            <p>
-                                <strong>{t("phone")}:</strong> {businessPhone}
-                            </p>
+                            {businessAddress && (
+                                <p>
+                                    <strong>{t("businessAddress")}:</strong> {businessAddress}
+                                </p>
+                            )}
+                            {businessPhone && (
+                                <p>
+                                    <strong>{t("phone")}:</strong> {businessPhone}
+                                </p>
+                            )}
                         </div>
 
                         <div className="flex flex-col sm:flex-row gap-4 justify-center">
                             {googleCalendarUrl && (
                                 <Button asChild variant="secondary">
                                     <a href={googleCalendarUrl} target="_blank" rel="noreferrer">
-                                        <Calendar className="h-4 w-4 mr-2" />
+                                        <Calendar className="h-4 w-4 me-2" />
                                         {t("addToGoogleCalendar")}
                                     </a>
                                 </Button>

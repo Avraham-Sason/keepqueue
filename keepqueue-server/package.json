@@ -5,23 +5,28 @@
     "main": "index.js",
     "scripts": {
         "build": "tsc",
-        "deploy": "powershell -ExecutionPolicy Bypass -File ./ps/deploy.ps1",
         "start": "nodemon --exec ts-node src/app.ts",
-        "startjs": "tsc&&node dist/app.js"
+        "startjs": "tsc&&node dist/app.js",
+        "admin:create": "ts-node scripts/create-admin.ts",
+        "migrate:user-ids": "ts-node scripts/migrate-user-ids.ts",
+        "check:migration": "ts-node scripts/migrate-user-ids.check.ts",
+        "check:appointment-rules": "ts-node scripts/appointment-rules.check.ts",
+        "check:cors": "ts-node scripts/cors.check.ts",
+        "check:cache": "ts-node scripts/cache.check.ts",
+        "check:reminders": "ts-node scripts/reminders.check.ts",
+        "check:waitlist": "ts-node scripts/waitlist.check.ts",
+        "check": "npm run check:migration && npm run check:appointment-rules && npm run check:cors && npm run check:cache && npm run check:reminders && npm run check:waitlist"
     },
     "dependencies": {
         "axios": "^1.6.8",
-        "core": "^1.0.113",
         "cors": "^2.8.5",
         "dotenv": "^17.2.2",
         "express": "^4.19.2",
         "firebase-admin": "^13.5.0",
-        "form-data": "^4.0.4",
         "helmet": "^8.3.0",
         "lodash": "^4.17.21",
         "moment": "^2.30.1",
         "moment-timezone": "^0.5.45",
-        "uuid": "^11.1.0",
         "zod": "^4.1.9"
     },
     "devDependencies": {

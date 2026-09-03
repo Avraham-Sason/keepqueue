@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { LogOut } from "lucide-react";
+import { CalendarDays, LogOut } from "lucide-react";
 import { ThemeToggle } from "@/components/theme";
 import { A11yToggle } from "@/components/config/a11y";
 import Link from "next/link";
@@ -18,7 +18,7 @@ export function CustomerHeader() {
         <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50 py-2">
             <div className="flex items-center justify-between w-full">
                 <div className="flex items-center gap-1">
-                    <Link href="/customer/marketplace" className="flex items-center space-x-2">
+                    <Link href="/marketplace" className="flex items-center space-x-2">
                         <div className="h-8 w-8 rounded-lg  flex items-center justify-center">
                             <Image src="/logo.png" alt="logo" width={32} height={32} />
                         </div>
@@ -41,9 +41,18 @@ export function CustomerHeader() {
                             </div>
                         </div>
 
+                        {user?.type === "customer" && (
+                            <Button variant="ghost" size="sm" asChild>
+                                <Link href="/customer/dashboard">
+                                    <CalendarDays className="h-4 w-4 sm:me-2" />
+                                    <span className="hidden sm:inline">{t("myAppointments")}</span>
+                                </Link>
+                            </Button>
+                        )}
+
                         <Button variant="outline" size="sm" asChild>
                             <Link href="/" onClick={logout}>
-                                <LogOut className="h-4 w-4 mr-2" />
+                                <LogOut className="h-4 w-4 me-2" />
                                 {t("signOut")}
                             </Link>
                         </Button>

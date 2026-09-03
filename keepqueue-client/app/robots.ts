@@ -5,7 +5,7 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: '*',
       allow: '/',
-      disallow: ['/business/', '/home/'],
+      disallow: ['/business/', '/admin/', '/customer/', '/auth/'],
     },
     sitemap: 'https://keepqueue.com/sitemap.xml',
   }

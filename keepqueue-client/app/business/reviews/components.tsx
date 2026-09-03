@@ -8,12 +8,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Star, Flag, EyeOff, Eye, MessageSquare } from "lucide-react";
 import { motion } from "framer-motion";
 import { useLanguage } from "@/hooks";
-import type { Review } from "@/lib/types";
+import type { ReviewWithUser } from "@/lib/types/business";
 import { timestampToString } from "@/lib/helpers/time";
-
-interface ReviewWithUser extends Review {
-    user: { firstName?: string; lastName?: string; email?: string };
-}
 
 interface StatsCardProps {
     averageRating: number;

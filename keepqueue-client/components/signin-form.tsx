@@ -54,11 +54,15 @@ export function SignInForm({ type, disableRedirect = false, onSuccess }: SignInF
                 }
 
                 if (!disableRedirect) {
-                    if (isBusinessOwner) {
-                        router.push(`/business`);
+                    if (authUser?.type === "admin") {
+                        router.push("/admin");
+                    } else if (isBusinessOwner) {
+                        router.push("/business");
                     } else {
+                        // A customer with no business yet has nowhere on /home to land —
+                        // /home itself is not a route — so send them to their dashboard.
                         const customerBusinessId = (authUser as Customer | undefined)?.businessIds?.[0];
-                        router.push(customerBusinessId ? `/home/${customerBusinessId}` : `/home`);
+                        router.push(customerBusinessId ? `/home/${customerBusinessId}` : "/customer/dashboard");
                     }
                 }
             } else {

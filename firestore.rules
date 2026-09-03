@@ -37,16 +37,30 @@ service cloud.firestore {
     }
 
     // Public booking pages render business details and their services and reviews.
+    // ratingAvg/ratingCount are computed by the server from reviews and rendered on the public
+    // page; ownerId and isActive decide who controls the tenant and whether it is bookable.
+    // None of them belong to the edit-details form, so none of them are writable here.
     match /businesses/{businessId} {
       allow read: if true;
       allow create: if signedIn() && request.resource.data.ownerId == uid();
-      allow update, delete: if signedIn() && resource.data.ownerId == uid();
+      allow update: if signedIn() && resource.data.ownerId == uid()
+        && request.resource.data.ownerId == resource.data.ownerId
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['name', 'phone', 'address', 'categories', 'lang', 'currency', 'description',
+                       'operationSchedule', 'policy', 'logoUrl', 'timezone', 'timestamp']);
+      allow delete: if false;
     }
 
+    // businessId is the tenant boundary, so it cannot be a writable field: flipping it on an
+    // update either pushes this document into someone else's business or pulls theirs into
+    // ours. Ownership of the document as it stands is what grants the write, and the write may
+    // not change who owns it.
     match /services/{serviceId} {
       allow read: if true;
       allow create: if ownsBusiness(request.resource.data.businessId);
-      allow update, delete: if ownsBusiness(resource.data.businessId);
+      allow update: if ownsBusiness(resource.data.businessId)
+        && request.resource.data.businessId == resource.data.businessId;
+      allow delete: if ownsBusiness(resource.data.businessId);
     }
 
     match /reviews/{reviewId} {
@@ -58,14 +72,39 @@ service cloud.firestore {
 
     // A profile is readable and writable only by the person it describes. Businesses read their
     // customers through the API, which is not subject to these rules.
+    // The document id is the Firebase Auth uid. Reading by id is the only shape this rule
+    // can authorize — a collection query filtered on email cannot prove the constraint and
+    // is rejected wholesale, which is why the client looks profiles up by uid.
+    // The operator reads other people's profiles through /actions/admin/*, which runs on the
+    // Admin SDK and is not subject to these rules, so no admin allowance belongs here.
+    //
+    // Self-write is deliberately narrower than self-read. `type` decides which role checks the
+    // account passes, `blockedByBusinessIds` is how a business bars a no-show customer, and
+    // `ownedBusinessIds`/`businessIds` are the tenant links — a document its own subject can
+    // rewrite freely is a document that cannot carry any of that. Only the fields the profile
+    // form actually edits stay writable; everything else moves through /actions/*, which runs
+    // on the Admin SDK and is not bound by these rules.
     match /users/{userId} {
-      allow read, write: if signedIn() && userId == uid();
+      allow read: if signedIn() && userId == uid();
+      allow create: if signedIn() && userId == uid()
+        && request.resource.data.type in ['customer', 'business'];
+      allow update: if signedIn() && userId == uid()
+        && request.resource.data.type == resource.data.type
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['firstName', 'lastName', 'phone', 'email', 'photoURL', 'contacts', 'timestamp']);
+      allow delete: if false;
     }
 
+    // A customer books, reschedules and cancels through /actions/businesses/appointments/*,
+    // which validates the slot, bounds the duration and detects overlap. Letting the browser
+    // write here directly would route around all of it — a customer could mint a CONFIRMED
+    // event at any time, of any length, for any business. The only legitimate browser write is
+    // the owner's own vacation/holiday block.
     match /calendar/{eventId} {
       allow read: if isOwnRecord() || ownsBusiness(resource.data.businessId);
-      allow create: if creatingOwnRecord() || ownsBusiness(request.resource.data.businessId);
-      allow update: if isOwnRecord() || ownsBusiness(resource.data.businessId);
+      allow create: if ownsBusiness(request.resource.data.businessId);
+      allow update: if ownsBusiness(resource.data.businessId)
+        && request.resource.data.businessId == resource.data.businessId;
       allow delete: if ownsBusiness(resource.data.businessId);
     }
 
@@ -76,13 +115,19 @@ service cloud.firestore {
     }
 
     match /staff/{staffId} {
-      allow read, write: if ownsBusiness(resource.data.businessId)
-        || ownsBusiness(request.resource.data.businessId);
+      allow read: if ownsBusiness(resource.data.businessId);
+      allow create: if ownsBusiness(request.resource.data.businessId);
+      allow update: if ownsBusiness(resource.data.businessId)
+        && request.resource.data.businessId == resource.data.businessId;
+      allow delete: if ownsBusiness(resource.data.businessId);
     }
 
     match /message_templates/{templateId} {
-      allow read, write: if ownsBusiness(resource.data.businessId)
-        || ownsBusiness(request.resource.data.businessId);
+      allow read: if ownsBusiness(resource.data.businessId);
+      allow create: if ownsBusiness(request.resource.data.businessId);
+      allow update: if ownsBusiness(resource.data.businessId)
+        && request.resource.data.businessId == resource.data.businessId;
+      allow delete: if ownsBusiness(resource.data.businessId);
     }
 
     // An audit trail nobody can read back or rewrite from a browser is worth more than one that

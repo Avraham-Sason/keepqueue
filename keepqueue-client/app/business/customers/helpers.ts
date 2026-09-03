@@ -30,3 +30,10 @@ export const getUserById = async (userId: string, signal?: AbortSignal) => {
         { signal }
     );
 };
+export const blockCustomer = async (customerId: string, businessId: string) => {
+    return apiCall("POST", "actions", `businesses/customers/block`, { customerId, businessId });
+};
+
+export const unblockCustomer = async (customerId: string, businessId: string) => {
+    return apiCall("POST", "actions", `businesses/customers/unblock`, { customerId, businessId });
+};

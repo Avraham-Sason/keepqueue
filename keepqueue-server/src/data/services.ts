@@ -1,29 +1,55 @@
 import { jsonFailed, jsonOK } from "../helpers";
 import { cacheManager, logger } from "../managers";
-import { RouterService, BusinessWithRelations, StringObject, CalendarEventWithRelations, Customer, CalendarEvent, Review, StaffMember, WaitItem, User, Service } from "../types";
-import { checkCondition } from "./helpers";
+import { RouterService, Business, BusinessWithRelations, StringObject, CalendarEventWithRelations, Customer, CalendarEvent, Review, StaffMember, WaitItem, User, Service } from "../types";
 import {
     GetAvailabilityByServiceIdModel, GetBusinessCustomersModel, GetBusinessModel,
-    GetCollectionModel, GetUserByIdModel, GetBusinessStaffModel, GetBusinessWaitlistModel,
+    GetMyAppointmentsModel, GetUserByIdModel, GetBusinessStaffModel, GetBusinessWaitlistModel,
     GetBusinessReviewsModel, GetBusinessRatingsModel, GetBusinessAppointmentsModel,
-    GetBusinessAnalyticsModel,
+    GetBusinessAnalyticsModel, SearchBusinessesModel,
 } from "./schemes";
-import { computeBusinessAvailability } from "../actions/businesses/appointments/helpers";
+import {
+    computeBusinessAvailability,
+    eligibleStaffForService,
+    mergeSlots,
+    scheduleForStaff,
+} from "../actions/businesses/appointments/helpers";
+import { AuthenticatedRequest } from "../middlewares/authGuard";
 
-export const S_getCollection: RouterService = async (req, res, next) => {
+/**
+ * A review is public, the reviewer's account is not. Everything a stranger may see about the
+ * person who wrote it is their first name; email, phone and business links stay behind.
+ */
+const publicReviewer = (user: User | undefined) =>
+    user ? ({ id: user.id, firstName: user.firstName, photoURL: user.photoURL } as User) : undefined;
+
+/**
+ * The appointments of whoever is asking. Replaces a general "query any collection" endpoint
+ * that took the filter from the request body: the scope here comes from the verified token and
+ * cannot be widened by the caller. Business and service names are resolved server-side because
+ * a customer has no way to read either collection.
+ */
+export const S_getMyAppointments: RouterService = async (req, res, next) => {
     try {
-        const { collectionName, conditions, conditionsType = "and" } = req.body as GetCollectionModel;
-        let data = cacheManager.get(collectionName, []) as any[];
-        if (conditions && conditions.length > 0) {
-            data = data.filter((item) => {
-                if (conditionsType === "and") {
-                    return conditions.every((condition) => checkCondition(item, condition));
-                } else {
-                    return conditions.some((condition) => checkCondition(item, condition));
-                }
-            });
+        const uid = (req as AuthenticatedRequest).user?.uid;
+        if (!uid) {
+            res.status(401).json(jsonFailed("Authentication required"));
+            return;
         }
-        res.json(jsonOK(data));
+        const { businessId } = req.body as GetMyAppointmentsModel;
+
+        const calendar = cacheManager.get("calendar", []) as CalendarEvent[];
+        const businessesMap = cacheManager.get("businessesMap", new Map());
+        const servicesMap = cacheManager.get("servicesMap", new Map());
+
+        const mine = calendar
+            .filter((e) => e.userId === uid && (!businessId || e.businessId === businessId))
+            .map((e) => ({
+                ...e,
+                businessName: businessesMap.get(e.businessId)?.name ?? null,
+                serviceName: e.serviceId ? servicesMap.get(e.serviceId)?.name ?? null : null,
+            }));
+
+        res.json(jsonOK(mine));
     } catch (error) {
         next(error);
     }
@@ -101,26 +127,79 @@ export const S_getBusiness: RouterService = async (req, res, next) => {
 
         const businessStaff = staff.filter((s) => s.businessId === business.id);
 
-        const result: BusinessWithRelations = {
-            ...business,
-            services: businessServices,
-            calendar: businessCalendar,
-            waitlist: businessWaitlist,
-            messageTemplates: businessMessageTemplates,
-            reviews: businessReviews,
-            availability: computeBusinessAvailability(business, business.operationSchedule),
-            customers: businessCustomers,
-            staff: businessStaff,
+        const availability = computeBusinessAvailability(business, business.operationSchedule);
+
+        // This route has to stay reachable by anonymous visitors — it is what the public booking
+        // page runs on — so the caller is identified rather than rejected, and everything that
+        // names another person is withheld unless the caller owns the business.
+        const requester = (req as AuthenticatedRequest).user;
+        const isOwner = !!requester && (business.ownerId === requester.uid || requester.isAdmin === true);
+
+        if (isOwner) {
+            const result: BusinessWithRelations = {
+                ...business,
+                services: businessServices,
+                calendar: businessCalendar,
+                waitlist: businessWaitlist,
+                messageTemplates: businessMessageTemplates,
+                reviews: businessReviews,
+                availability,
+                customers: businessCustomers,
+                staff: businessStaff,
+            };
+            res.json(jsonOK(result));
+            return;
+        }
+
+        // A business the operator switched off should not be bookable by the public.
+        if (business.isActive === false) {
+            res.status(404).json(jsonFailed("Business not found"));
+            return;
+        }
+
+        // ownerId identifies a person and a visitor has no use for it.
+        const { ownerId: _ownerId, ...publicBusiness } = business;
+
+        const publicResult: BusinessWithRelations = {
+            ...publicBusiness,
+            ownerId: "",
+            services: businessServices.filter((s) => s.active !== false),
+            // Only the caller's own appointments, and without the joined user record. Slot
+            // blocking comes from `availability`, which the server computed over every event.
+            calendar: requester ? businessCalendar.filter((e) => e.userId === requester.uid).map(({ user, ...rest }) => rest) : [],
+            reviews: businessReviews.filter((r) => !r.flagged).map(({ user, ...rest }) => ({ ...rest, user: publicReviewer(user) })),
+            availability,
+            waitlist: [],
+            messageTemplates: [],
+            customers: [],
+            // Enough to let a customer choose who they book with, and nothing that belongs to
+            // the employment relationship — no email, phone or notes.
+            staff: businessStaff
+                .filter((member) => member.isActive !== false)
+                .map((member) => ({
+                    id: member.id,
+                    businessId: member.businessId,
+                    firstName: member.firstName,
+                    lastName: member.lastName,
+                    role: member.role,
+                    isActive: member.isActive,
+                    operationSchedule: [],
+                    serviceIds: member.serviceIds ?? [],
+                    photoURL: member.photoURL,
+                    color: member.color,
+                    created: member.created,
+                    timestamp: member.timestamp,
+                })),
         };
 
-        res.json(jsonOK(result));
+        res.json(jsonOK(publicResult));
     } catch (error) {
         next(error);
     }
 };
 
 export const S_getAvailabilityByServiceId: RouterService = async (req, res, next) => {
-    const { serviceId } = req.body as GetAvailabilityByServiceIdModel;
+    const { serviceId, staffId } = req.body as GetAvailabilityByServiceIdModel;
     try {
         const servicesMap = cacheManager.get("servicesMap", new Map());
         const businessesMap = cacheManager.get("businessesMap", new Map());
@@ -143,7 +222,14 @@ export const S_getAvailabilityByServiceId: RouterService = async (req, res, next
         const operationSchedule =
             service.operationSchedule && service.operationSchedule.length > 0 ? service.operationSchedule : business.operationSchedule;
 
-        const availability = computeBusinessAvailability(business, operationSchedule);
+        // With staff on the books the business is several parallel resources: a slot should be
+        // offered while anyone who can perform the service is free, not only while everyone is.
+        // Asking for a particular person narrows it to their own calendar.
+        const staff = eligibleStaffForService(business.id!, serviceId);
+        const pool = staffId ? staff.filter((member) => member.id === staffId) : staff;
+        const availability = pool.length
+            ? mergeSlots(pool.flatMap((member) => computeBusinessAvailability(business, scheduleForStaff(business, member), undefined, undefined, member.id)))
+            : computeBusinessAvailability(business, operationSchedule);
 
         // Filter availability slots to only include those that can accommodate the service duration
         const serviceDurationMin = service.durationMin || 30;
@@ -174,18 +260,55 @@ export const S_getBusinessCustomers: RouterService = async (req, res, next) => {
     }
 };
 
+/**
+ * Self, or one of the caller's own customers. Previously any signed-in account could fetch any
+ * user record by id, which made the authGuard on /data/getBusinessCustomers pointless — the
+ * same data was one request away. The projection drops everything a business does not need to
+ * see about a person: their other business links, notification preferences and audit stamps.
+ */
 export const S_getUserById: RouterService = async (req, res, next) => {
     const { userId } = req.body as GetUserByIdModel;
     try {
-        const allUsers = cacheManager.get("usersMap", new Map());
-        const user = allUsers.get(userId);
-        if (!user) {
-            const mgs = `User not found for user ${userId}`;
-            logger.error(mgs);
-            res.json(jsonFailed(mgs));
+        const requester = (req as AuthenticatedRequest).user;
+        if (!requester) {
+            res.status(401).json(jsonFailed("Authentication required"));
             return;
         }
-        return res.json(jsonOK(user));
+
+        const allUsers = cacheManager.get("usersMap", new Map());
+        const user = allUsers.get(userId) as User | undefined;
+        if (!user) {
+            res.status(404).json(jsonFailed("User not found"));
+            return;
+        }
+
+        if (userId === requester.uid || requester.isAdmin) {
+            res.json(jsonOK(user));
+            return;
+        }
+
+        const businesses = cacheManager.get("businesses", []) as any[];
+        const callerBusinessIds = businesses.filter((b) => b.ownerId === requester.uid).map((b) => b.id);
+        const isMyCustomer = "businessIds" in user && (user.businessIds ?? []).some((id) => callerBusinessIds.includes(id));
+
+        if (!isMyCustomer) {
+            res.status(403).json(jsonFailed("You do not have access to this user"));
+            return;
+        }
+
+        res.json(
+            jsonOK({
+                id: user.id,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.email,
+                phone: user.phone,
+                photoURL: user.photoURL,
+                isActive: user.isActive,
+                notes: user.notes,
+                blockedByBusinessIds: "blockedByBusinessIds" in user ? user.blockedByBusinessIds ?? [] : [],
+            })
+        );
     } catch (error) {
         next(error);
     }
@@ -229,11 +352,14 @@ export const S_getBusinessReviews: RouterService = async (req, res, next) => {
         const allReviews = cacheManager.get("reviews", []) as Review[];
         const usersMap = cacheManager.get("usersMap", new Map());
 
+        // Unauthenticated route: hidden reviews stay hidden, and the reviewer is reduced to a
+        // display name. Returning the joined user record here leaked every reviewer's contact
+        // details to anyone who knew a business id.
         const reviews = allReviews
-            .filter((r) => r.businessId === businessId)
+            .filter((r) => r.businessId === businessId && !r.flagged)
             .map((r) => ({
                 ...r,
-                user: usersMap.get(r.userId),
+                user: publicReviewer(usersMap.get(r.userId)),
             }));
 
         res.json(jsonOK(reviews));
@@ -319,10 +445,18 @@ export const S_getBusinessAnalytics: RouterService = async (req, res, next) => {
             return startedAt >= periodStart && startedAt <= now;
         });
 
+        // Nothing transitions a past appointment automatically, and businesses do not reliably
+        // mark every one by hand, so counting raw statuses reported almost no completions and a
+        // no-show rate near zero. An appointment whose time has passed and which was never
+        // cancelled or marked missed is treated as completed for reporting; the stored status is
+        // left alone. This is a reporting convention, not a write.
+        const effectiveStatus = (e: CalendarEvent): CalendarEvent["status"] =>
+            (e.status === "BOOKED" || e.status === "CONFIRMED") && e.end.toMillis() < now ? "DONE" : e.status;
+
         const totalBookings = businessEvents.length;
         const noShows = businessEvents.filter((e) => e.status === "NO_SHOW").length;
         const cancellations = businessEvents.filter((e) => e.status === "CANCELLED").length;
-        const completed = businessEvents.filter((e) => e.status === "DONE").length;
+        const completed = businessEvents.filter((e) => effectiveStatus(e) === "DONE").length;
 
         const noShowRate = totalBookings > 0 ? Math.round((noShows / totalBookings) * 100) : 0;
         const cancellationRate = totalBookings > 0 ? Math.round((cancellations / totalBookings) * 100) : 0;
@@ -330,7 +464,9 @@ export const S_getBusinessAnalytics: RouterService = async (req, res, next) => {
         // Revenue by service
         const revenueByService: Record<string, { serviceName: string; bookings: number; revenue: number }> = {};
         for (const event of businessEvents) {
-            if (event.serviceId && event.status !== "CANCELLED") {
+            // Revenue is money actually earned. Counting every non-cancelled appointment meant
+            // no-shows and appointments that never happened were reported as income.
+            if (event.serviceId && effectiveStatus(event) === "DONE") {
                 const service = servicesMap.get(event.serviceId);
                 if (service) {
                     if (!revenueByService[event.serviceId]) {
@@ -359,6 +495,60 @@ export const S_getBusinessAnalytics: RouterService = async (req, res, next) => {
             totalRevenue,
             topServices,
         }));
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * The public directory behind /marketplace.
+ *
+ * Unauthenticated by design — it is the customer-acquisition surface — so it returns only what
+ * a listing card shows. Deactivated businesses and those with nothing bookable are left out:
+ * a directory entry that cannot be booked wastes the visitor's click.
+ */
+export const S_searchBusinesses: RouterService = async (req, res, next) => {
+    try {
+        const { query, category, limit = 30 } = req.body as SearchBusinessesModel;
+        const businesses = cacheManager.get("businesses", []) as Business[];
+        const services = cacheManager.get("services", []) as Service[];
+
+        const needle = query?.trim().toLowerCase();
+        const wantedCategory = category?.trim().toLowerCase();
+
+        const rows = businesses
+            .filter((business) => business.isActive !== false)
+            .map((business) => {
+                const active = services.filter((s) => s.businessId === business.id && s.active !== false);
+                return { business, active };
+            })
+            .filter(({ active }) => active.length > 0)
+            .filter(({ business, active }) => {
+                if (wantedCategory && !(business.categories ?? []).some((c: string) => c.toLowerCase() === wantedCategory)) return false;
+                if (!needle) return true;
+                const haystack = [business.name, business.address ?? "", business.description ?? "", ...(business.categories ?? []), ...active.map((s) => s.name)]
+                    .join(" ")
+                    .toLowerCase();
+                return haystack.includes(needle);
+            })
+            .map(({ business, active }) => ({
+                id: business.id,
+                name: business.name,
+                address: business.address ?? "",
+                description: business.description ?? "",
+                categories: business.categories ?? [],
+                logoUrl: business.logoUrl ?? null,
+                ratingAvg: business.ratingAvg ?? 0,
+                ratingCount: business.ratingCount ?? 0,
+                currency: business.currency ?? "ILS",
+                serviceCount: active.length,
+                priceFrom: active.reduce((min, s) => (s.price < min ? s.price : min), active[0].price),
+            }))
+            .sort((a, b) => b.ratingCount - a.ratingCount || a.name.localeCompare(b.name));
+
+        const categories = [...new Set(businesses.filter((b) => b.isActive !== false).flatMap((b) => b.categories ?? []))].sort();
+
+        res.json(jsonOK({ businesses: rows.slice(0, limit), total: rows.length, categories }));
     } catch (error) {
         next(error);
     }

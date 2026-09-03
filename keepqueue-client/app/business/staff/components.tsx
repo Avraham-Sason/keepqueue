@@ -6,13 +6,21 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+    MAX_INTERVALS_PER_DAY,
+    createDefaultInterval,
+    createInitialScheduleForm,
+    scheduleFormToOperationSchedule,
+    type OperationScheduleFormState,
+} from "../editDetails/helpers";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Edit, Trash2, Plus, Users } from "lucide-react";
 import { motion } from "framer-motion";
-import type { StaffMember, StaffRole } from "@/lib/types";
+import type { Service, StaffMember, StaffRole } from "@/lib/types";
 import { useLanguage } from "@/hooks";
 
 interface StaffCardProps {
@@ -106,9 +114,10 @@ interface StaffDialogProps {
     onClose: () => void;
     onSave: (data: Partial<StaffMember>) => Promise<void>;
     staff: StaffMember | null;
+    services: Service[];
 }
 
-export function StaffDialog({ isOpen, onClose, onSave, staff }: StaffDialogProps) {
+export function StaffDialog({ isOpen, onClose, onSave, staff, services }: StaffDialogProps) {
     const { t } = useLanguage();
     const [formData, setFormData] = useState({
         firstName: "",
@@ -120,8 +129,14 @@ export function StaffDialog({ isOpen, onClose, onSave, staff }: StaffDialogProps
         notes: "",
     });
     const [isSaving, setIsSaving] = useState(false);
+    const [scheduleForm, setScheduleForm] = useState<OperationScheduleFormState>(() => createInitialScheduleForm(null));
+    const [serviceIds, setServiceIds] = useState<string[]>([]);
+    const [saveError, setSaveError] = useState<string | null>(null);
 
     useEffect(() => {
+        setSaveError(null);
+        setScheduleForm(createInitialScheduleForm(staff?.operationSchedule));
+        setServiceIds(staff?.serviceIds ?? []);
         if (staff) {
             setFormData({
                 firstName: staff.firstName || "",
@@ -140,19 +155,49 @@ export function StaffDialog({ isOpen, onClose, onSave, staff }: StaffDialogProps
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSaving(true);
+        setSaveError(null);
         try {
             await onSave({
                 ...(staff || {}),
                 ...formData,
                 isActive: true,
-                operationSchedule: staff?.operationSchedule || [],
+                operationSchedule: scheduleFormToOperationSchedule(scheduleForm),
+                serviceIds,
             });
         } catch (error) {
-            console.error("Error saving staff:", error);
+            // Closing on failure told the owner the change had saved when it had not.
+            setSaveError(error instanceof Error ? error.message : t("errorGeneric"));
         } finally {
             setIsSaving(false);
         }
     };
+
+    const toggleDay = (index: number) =>
+        setScheduleForm((prev) => prev.map((day, i) => (i === index ? { ...day, isOpen: !day.isOpen } : day)));
+
+    const setInterval = (dayIndex: number, intervalIndex: number, field: "start" | "end", value: string) =>
+        setScheduleForm((prev) =>
+            prev.map((day, i) =>
+                i === dayIndex
+                    ? { ...day, intervals: day.intervals.map((interval, j) => (j === intervalIndex ? { ...interval, [field]: value } : interval)) }
+                    : day
+            )
+        );
+
+    const addInterval = (dayIndex: number) =>
+        setScheduleForm((prev) =>
+            prev.map((day, i) =>
+                i === dayIndex && day.intervals.length < MAX_INTERVALS_PER_DAY ? { ...day, intervals: [...day.intervals, createDefaultInterval()] } : day
+            )
+        );
+
+    const removeInterval = (dayIndex: number, intervalIndex: number) =>
+        setScheduleForm((prev) =>
+            prev.map((day, i) => (i === dayIndex ? { ...day, intervals: day.intervals.filter((_, j) => j !== intervalIndex) } : day))
+        );
+
+    const toggleService = (serviceId: string) =>
+        setServiceIds((prev) => (prev.includes(serviceId) ? prev.filter((id) => id !== serviceId) : [...prev, serviceId]));
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -240,7 +285,95 @@ export function StaffDialog({ isOpen, onClose, onSave, staff }: StaffDialogProps
                                 rows={2}
                             />
                         </div>
+                        <div className="grid gap-2">
+                            <Label>{t("staffServicesLabel")}</Label>
+                            <p className="text-xs text-muted-foreground">{t("staffServicesHelper")}</p>
+                            {services.length === 0 ? (
+                                <p className="text-sm text-muted-foreground">{t("noServicesYet")}</p>
+                            ) : (
+                                <div className="flex flex-wrap gap-2">
+                                    {services.map((service) => {
+                                        const checked = serviceIds.includes(service.id!);
+                                        return (
+                                            <button
+                                                key={service.id}
+                                                type="button"
+                                                role="checkbox"
+                                                aria-checked={checked}
+                                                onClick={() => toggleService(service.id!)}
+                                                className={`rounded-full border px-3 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                                                    checked ? "border-primary bg-primary/10" : "border-input hover:bg-accent"
+                                                }`}
+                                            >
+                                                {service.name}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="grid gap-2">
+                            <Label>{t("staffHoursLabel")}</Label>
+                            <p className="text-xs text-muted-foreground">{t("staffHoursHelper")}</p>
+                            <div className="grid gap-2">
+                                {scheduleForm.map((day, dayIndex) => (
+                                    <div key={day.day} className="rounded-md border p-2">
+                                        <div className="flex items-center gap-2">
+                                            <Checkbox
+                                                id={`staff-day-${day.day}`}
+                                                checked={day.isOpen}
+                                                onCheckedChange={() => toggleDay(dayIndex)}
+                                            />
+                                            <Label htmlFor={`staff-day-${day.day}`} className="text-sm font-normal">
+                                                {t(`weekday${day.day}`)}
+                                            </Label>
+                                        </div>
+                                        {day.isOpen && (
+                                            <div className="mt-2 grid gap-2">
+                                                {day.intervals.map((interval, intervalIndex) => (
+                                                    <div key={intervalIndex} className="flex items-center gap-2">
+                                                        <Input
+                                                            type="time"
+                                                            aria-label={t("openingTime")}
+                                                            value={interval.start}
+                                                            onChange={(e) => setInterval(dayIndex, intervalIndex, "start", e.target.value)}
+                                                            className="w-32"
+                                                        />
+                                                        <span className="text-muted-foreground">–</span>
+                                                        <Input
+                                                            type="time"
+                                                            aria-label={t("closingTime")}
+                                                            value={interval.end}
+                                                            onChange={(e) => setInterval(dayIndex, intervalIndex, "end", e.target.value)}
+                                                            className="w-32"
+                                                        />
+                                                        {day.intervals.length > 1 && (
+                                                            <Button
+                                                                type="button"
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                onClick={() => removeInterval(dayIndex, intervalIndex)}
+                                                            >
+                                                                {t("remove")}
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                                {day.intervals.length < MAX_INTERVALS_PER_DAY && (
+                                                    <Button type="button" variant="outline" size="sm" onClick={() => addInterval(dayIndex)}>
+                                                        {t("addInterval")}
+                                                    </Button>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
                     </div>
+                    {saveError && <p className="text-sm text-destructive">{saveError}</p>}
                     <DialogFooter>
                         <Button type="button" variant="outline" onClick={onClose} disabled={isSaving}>
                             {t("cancel")}

@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import moment from "moment-timezone";
-import CalendarComponent from "@/components/CalendarComponent/CalendarComponent";
+import { EventCalendar } from "@/components/CalendarComponent";
 import type { CalendarEvent as UiCalendarEvent, EventColor } from "@/components/CalendarComponent";
 import { useBusinessesStore, useSettingsStore } from "@/lib/store";
 import { timestampToMillis } from "@/lib/helpers";
@@ -17,12 +17,14 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar as CalendarPicker } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarDays, Palmtree, Ban } from "lucide-react";
+import { CalendarDays, Palmtree } from "lucide-react";
 import { format } from "date-fns";
-import { addDocument } from "@/lib/firebase";
+import { toast } from "sonner";
 import { useRefreshBusiness } from "../hooks";
-import { Timestamp } from "firebase/firestore";
+import { cancelAppointment, createCalendarEvent, rescheduleAppointment } from "../appointments/helpers";
 import { useAuthStore } from "@/lib/store";
+
+type BlockType = Exclude<CalendarEventType, "APPOINTMENT">;
 
 const statusColorByStatus: Record<CalendarEventStatus, EventColor> = {
     BOOKED: "primary",
@@ -37,6 +39,12 @@ const typeColorMap: Record<CalendarEventType, EventColor> = {
     VACATION: "amber",
     HOLIDAY: "violet",
     OTHER: "orange",
+};
+
+const blockTypeLabelKeys: Record<BlockType, string> = {
+    VACATION: "calendarBlockTypeVacation",
+    HOLIDAY: "calendarBlockTypeHoliday",
+    OTHER: "calendarBlockTypeOther",
 };
 
 const toDate = (value: unknown, userTimeZone: string): Date | null => {
@@ -81,13 +89,17 @@ const mapBusinessEvent = (event: CalendarEventWithRelations, fallbackTitle: stri
     const endDate = toDate(event.end, userTimeZone);
     if (!startDate || !endDate) return null;
 
-    const description = buildDescription(event);
+    const isAppointment = event.type === "APPOINTMENT";
+    const description = isAppointment ? buildDescription(event) : undefined;
     const id = event.id ?? `${startDate.getTime()}-${endDate.getTime()}`;
-    const color = event.type !== "APPOINTMENT" ? typeColorMap[event.type] : statusColorByStatus[event.status];
+    const color = isAppointment ? statusColorByStatus[event.status] : typeColorMap[event.type];
 
     return {
         id,
-        title: event.title?.trim() || event.service?.name || description || fallbackTitle,
+        // The create endpoint carries no title field, so a block's label round-trips through notes.
+        title: isAppointment
+            ? event.title?.trim() || event.service?.name || description || fallbackTitle
+            : event.notes?.trim() || event.title?.trim() || fallbackTitle,
         description,
         start: startDate,
         end: endDate,
@@ -108,7 +120,7 @@ function Calendar() {
     const refreshBusiness = useRefreshBusiness();
 
     const [blockDialogOpen, setBlockDialogOpen] = useState(false);
-    const [blockType, setBlockType] = useState<"VACATION" | "HOLIDAY" | "OTHER">("VACATION");
+    const [blockType, setBlockType] = useState<BlockType>("VACATION");
     const [blockTitle, setBlockTitle] = useState("");
     const [blockStartDate, setBlockStartDate] = useState<Date>(new Date());
     const [blockEndDate, setBlockEndDate] = useState<Date>(new Date());
@@ -117,39 +129,84 @@ function Calendar() {
     const events = useMemo(() => {
         if (!currentBusiness?.calendar?.length) return [] as UiCalendarEvent[];
         return currentBusiness.calendar
+            // Cancelling is how a block is removed — the record stays but stops blocking, and a
+            // struck-out vacation on the grid would read as a delete that did not take.
+            .filter((event) => event.type === "APPOINTMENT" || event.status !== "CANCELLED")
             .map((event) => mapBusinessEvent(event, t("calendarDefaultEventTitle"), userTimeZone))
             .filter((event): event is UiCalendarEvent => event !== null)
             .sort((a, b) => a.start.getTime() - b.start.getTime());
     }, [currentBusiness?.calendar, t, userTimeZone]);
 
+    // The calendar renders straight from the store, so a rejected write has no local state to
+    // roll back — refetching is what puts a dragged event back where the server still has it.
+    const settle = async (action: Promise<unknown>, successKey: string) => {
+        try {
+            await action;
+            toast.success(t(successKey));
+        } catch (error: any) {
+            console.error("Calendar write failed:", error);
+            toast.error(error?.message || t("errorGeneric"));
+        } finally {
+            refreshBusiness();
+        }
+    };
+
+    const handleEventAdd = async (event: UiCalendarEvent) => {
+        if (!currentBusiness?.id || !user?.id) return;
+        await settle(
+            createCalendarEvent({
+                businessId: currentBusiness.id,
+                userId: user.id,
+                type: "OTHER",
+                startMillis: event.start.getTime(),
+                endMillis: event.end.getTime(),
+                notes: event.title?.trim() || undefined,
+            }),
+            "calendarBlockCreated"
+        );
+    };
+
+    const handleEventUpdate = async (event: UiCalendarEvent) => {
+        // Renaming is only meaningful for a block, whose label lives in notes; an appointment is
+        // titled after the service it books and is not the owner's to rename from here.
+        const source = currentBusiness?.calendar?.find((item) => item.id === event.id);
+        const notes = source && source.type !== "APPOINTMENT" ? event.title?.trim() : undefined;
+        await settle(rescheduleAppointment(event.id, event.start.getTime(), event.end.getTime(), notes), "calendarEventRescheduled");
+    };
+
+    const handleEventDelete = async (eventId: string) => {
+        await settle(cancelAppointment(eventId), "appointmentCancelled");
+    };
+
     const handleCreateBlock = async () => {
         if (!currentBusiness?.id || !user?.id) return;
+
+        // Days are bounded in the viewer's timezone, not the browser's: a block is a business
+        // decision about its own calendar day, and the two zones do not always agree on one.
+        const start = moment.tz(format(blockStartDate, "yyyy-MM-dd"), userTimeZone).startOf("day");
+        const end = moment.tz(format(blockEndDate, "yyyy-MM-dd"), userTimeZone).endOf("day");
+        if (end.valueOf() <= start.valueOf()) {
+            toast.error(t("calendarDialogErrorEndBeforeStart"));
+            return;
+        }
+
         setIsSaving(true);
         try {
-            const start = new Date(blockStartDate);
-            start.setHours(0, 0, 0, 0);
-            const end = new Date(blockEndDate);
-            end.setHours(23, 59, 59, 999);
-
-            const startUtc = moment.tz(start, userTimeZone).utc().toDate();
-            const endUtc = moment.tz(end, userTimeZone).utc().toDate();
-
-            await addDocument("calendar", {
+            await createCalendarEvent({
                 businessId: currentBusiness.id,
                 userId: user.id,
                 type: blockType,
-                status: "CONFIRMED",
-                title: blockTitle || (blockType === "VACATION" ? "Vacation" : blockType === "HOLIDAY" ? "Holiday" : "Block"),
-                start: Timestamp.fromDate(startUtc),
-                end: Timestamp.fromDate(endUtc),
-                created: Timestamp.now(),
-                timestamp: Timestamp.now(),
+                startMillis: start.valueOf(),
+                endMillis: end.valueOf(),
+                notes: blockTitle.trim() || t(blockTypeLabelKeys[blockType]),
             });
             refreshBusiness();
             setBlockDialogOpen(false);
             setBlockTitle("");
-        } catch (error) {
+            toast.success(t("calendarBlockCreated"));
+        } catch (error: any) {
             console.error("Error creating block:", error);
+            toast.error(error?.message || t("errorGeneric"));
         } finally {
             setIsSaving(false);
         }
@@ -170,12 +227,12 @@ function Calendar() {
                         setBlockDialogOpen(true);
                     }}
                 >
-                    <Palmtree className="h-4 w-4 mr-1" />
+                    <Palmtree className="h-4 w-4 me-1" />
                     {t("calendarNewEvent")}
                 </Button>
             </div>
 
-            <CalendarComponent events={events} />
+            <EventCalendar events={events} onEventAdd={handleEventAdd} onEventUpdate={handleEventUpdate} onEventDelete={handleEventDelete} />
 
             <Dialog open={blockDialogOpen} onOpenChange={(open) => !open && setBlockDialogOpen(false)}>
                 <DialogContent className="sm:max-w-[425px]">
@@ -188,15 +245,17 @@ function Calendar() {
                             <Input value={blockTitle} onChange={(e) => setBlockTitle(e.target.value)} />
                         </div>
                         <div className="grid gap-2">
-                            <Label>Type</Label>
-                            <Select value={blockType} onValueChange={(val) => setBlockType(val as typeof blockType)}>
+                            <Label>{t("calendarBlockTypeLabel")}</Label>
+                            <Select value={blockType} onValueChange={(val) => setBlockType(val as BlockType)}>
                                 <SelectTrigger>
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="VACATION">Vacation</SelectItem>
-                                    <SelectItem value="HOLIDAY">Holiday</SelectItem>
-                                    <SelectItem value="OTHER">Block/Other</SelectItem>
+                                    {(Object.keys(blockTypeLabelKeys) as BlockType[]).map((type) => (
+                                        <SelectItem key={type} value={type}>
+                                            {t(blockTypeLabelKeys[type])}
+                                        </SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -206,7 +265,7 @@ function Calendar() {
                                 <Popover>
                                     <PopoverTrigger asChild>
                                         <Button variant="outline" className="justify-start">
-                                            <CalendarDays className="h-4 w-4 mr-2" />
+                                            <CalendarDays className="h-4 w-4 me-2" />
                                             {format(blockStartDate, "PP")}
                                         </Button>
                                     </PopoverTrigger>
@@ -220,7 +279,7 @@ function Calendar() {
                                 <Popover>
                                     <PopoverTrigger asChild>
                                         <Button variant="outline" className="justify-start">
-                                            <CalendarDays className="h-4 w-4 mr-2" />
+                                            <CalendarDays className="h-4 w-4 me-2" />
                                             {format(blockEndDate, "PP")}
                                         </Button>
                                     </PopoverTrigger>

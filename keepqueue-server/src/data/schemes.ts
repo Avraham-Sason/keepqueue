@@ -1,27 +1,12 @@
 import { z } from "zod";
 
-const { object, string, array } = z;
+const { object, string } = z;
 
-const FORBIDDEN_FIELD_PARTS = new Set(["__proto__", "constructor", "prototype"]);
-
-const primitiveValue = z.union([z.string().max(1500), z.number(), z.boolean(), z.null()]);
-const conditionValue = z.union([primitiveValue, z.array(primitiveValue).max(30)]);
-
-export const getCollectionSchema = object({
-    collectionName: string().min(4).max(20),
-    conditions: array(
-        object({
-            fieldName: string()
-                .regex(/^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*$/)
-                .refine((name) => !name.split(".").some((part) => FORBIDDEN_FIELD_PARTS.has(part))),
-            operator: z.enum(["==", "!=", ">", ">=", "<", "<=", "in", "not-in", "array-contains"]),
-            value: conditionValue,
-        })
-    ).optional(),
-    conditionsType: z.enum(["and", "or"]).optional(),
+export const getMyAppointmentsSchema = object({
+    businessId: string().min(5).optional(),
 });
 
-export type GetCollectionModel = z.infer<typeof getCollectionSchema>;
+export type GetMyAppointmentsModel = z.infer<typeof getMyAppointmentsSchema>;
 
 export const getBusinessSchema = object({
     businessId: string().optional(),
@@ -32,6 +17,7 @@ export type GetBusinessModel = z.infer<typeof getBusinessSchema>;
 
 export const getAvailabilityByServiceIdSchema = object({
     serviceId: string().min(5),
+    staffId: string().min(1).optional(),
 });
 
 export type GetAvailabilityByServiceIdModel = z.infer<typeof getAvailabilityByServiceIdSchema>;
@@ -88,3 +74,11 @@ export const getBusinessAnalyticsSchema = object({
 });
 
 export type GetBusinessAnalyticsModel = z.infer<typeof getBusinessAnalyticsSchema>;
+
+export const searchBusinessesSchema = object({
+    query: string().max(120).optional(),
+    category: string().max(60).optional(),
+    limit: z.number().int().min(1).max(60).optional(),
+});
+
+export type SearchBusinessesModel = z.infer<typeof searchBusinessesSchema>;

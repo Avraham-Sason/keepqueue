@@ -1,62 +1,38 @@
 import React, { useState } from "react";
 import type { Customer, CalendarEventWithRelations } from "@/lib/types";
-import { getDocumentById, setDocument } from "@/lib/firebase";
+import { toast } from "sonner";
+import { useLanguage } from "@/hooks";
 import { useRefreshBusiness } from "../hooks";
-import { getUserById } from "./helpers";
+import { blockCustomer, unblockCustomer } from "./helpers";
 
 export function useCustomers() {
     const [viewingCustomerId, setViewingCustomerId] = useState<string | null>(null);
     const [blockingCustomerId, setBlockingCustomerId] = useState<string | null>(null);
     const [isBlocking, setIsBlocking] = useState(false);
     const refreshBusiness = useRefreshBusiness();
+    const { t } = useLanguage();
 
-    const handleBlockCustomer = async (customerId: string, businessId: string) => {
+    // blockedByBusinessIds lives on the customer's own users document, which firestore.rules
+    // only lets that customer write. The browser therefore cannot do this at all: the writes
+    // that used to be here were denied every time and the dialog closed as if they had worked.
+    // The server owns the field and reaches it with the Admin SDK.
+    const setBlocked = async (customerId: string, businessId: string, blocked: boolean) => {
         setIsBlocking(true);
         try {
-            const customer = (await getUserById(customerId)) as Customer | null;
-            if (!customer) {
-                console.error("Customer not found");
-                return;
-            }
-
-            const currentBlockedIds = customer.blockedByBusinessIds || [];
-            if (!currentBlockedIds.includes(businessId)) {
-                const updatedBlockedIds = [...currentBlockedIds, businessId];
-                await setDocument("users", customerId, {
-                    blockedByBusinessIds: updatedBlockedIds,
-                });
-                refreshBusiness();
-            }
+            await (blocked ? blockCustomer(customerId, businessId) : unblockCustomer(customerId, businessId));
+            toast.success(t(blocked ? "customerBlocked" : "customerUnblocked"));
+            await refreshBusiness();
             setBlockingCustomerId(null);
         } catch (error) {
-            console.error("Error blocking customer:", error);
+            toast.error(error instanceof Error ? error.message : t("errorGeneric"));
         } finally {
             setIsBlocking(false);
         }
     };
 
-    const handleUnblockCustomer = async (customerId: string, businessId: string) => {
-        setIsBlocking(true);
-        try {
-            const customer = (await getDocumentById("users", customerId)) as Customer | null;
-            if (!customer) {
-                console.error("Customer not found");
-                return;
-            }
+    const handleBlockCustomer = (customerId: string, businessId: string) => setBlocked(customerId, businessId, true);
 
-            const currentBlockedIds = customer.blockedByBusinessIds || [];
-            const updatedBlockedIds = currentBlockedIds.filter((id) => id !== businessId);
-            await setDocument("users", customerId, {
-                blockedByBusinessIds: updatedBlockedIds,
-            });
-            refreshBusiness();
-            setBlockingCustomerId(null);
-        } catch (error) {
-            console.error("Error unblocking customer:", error);
-        } finally {
-            setIsBlocking(false);
-        }
-    };
+    const handleUnblockCustomer = (customerId: string, businessId: string) => setBlocked(customerId, businessId, false);
 
     const openAppointmentsDialog = (customerId: string) => {
         setViewingCustomerId(customerId);

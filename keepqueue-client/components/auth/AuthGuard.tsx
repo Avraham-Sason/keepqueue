@@ -4,37 +4,42 @@ import { useAuthStore } from "@/lib/store";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
+type Role = "business" | "customer" | "admin";
+
 interface AuthGuardProps {
     children: React.ReactNode;
-    requiredRole?: "business" | "customer";
+    requiredRole?: Role;
 }
+
+const signInPathFor = (role?: Role) => (role === "customer" ? "/auth/signin/customer" : "/auth/signin/business");
+
+// Where a signed-in user belongs when they land on a section that is not theirs. Sending
+// them to a sign-in page instead would ask them to log in while already logged in.
+const homePathFor = (role: Role) => (role === "admin" ? "/admin" : role === "business" ? "/business" : "/customer/dashboard");
 
 export function AuthGuard({ children, requiredRole }: AuthGuardProps) {
     const isAuthenticated = useAuthStore.isAuthenticated();
-    const isBusinessOwner = useAuthStore.isBusinessOwner();
+    const user = useAuthStore.user();
     const router = useRouter();
+
+    const actualRole = (user?.type as Role | undefined) ?? undefined;
+    const roleMismatch = !!requiredRole && !!actualRole && actualRole !== requiredRole;
+    // Authenticated but the profile has not landed yet: render nothing rather than let a
+    // guarded section flash before the role is known.
+    const roleUnknown = !!requiredRole && !actualRole;
 
     useEffect(() => {
         if (!isAuthenticated) {
-            const redirectPath = requiredRole === "customer" ? "/auth/signin/customer" : "/auth/signin/business";
-            router.replace(redirectPath);
+            router.replace(signInPathFor(requiredRole));
             return;
         }
-
-        if (requiredRole === "business" && !isBusinessOwner) {
-            router.replace("/auth/signin/business");
-            return;
+        if (roleMismatch && actualRole) {
+            router.replace(homePathFor(actualRole));
         }
-
-        if (requiredRole === "customer" && isBusinessOwner) {
-            router.replace("/auth/signin/customer");
-            return;
-        }
-    }, [isAuthenticated, isBusinessOwner, requiredRole, router]);
+    }, [isAuthenticated, roleMismatch, actualRole, requiredRole, router]);
 
     if (!isAuthenticated) return null;
-    if (requiredRole === "business" && !isBusinessOwner) return null;
-    if (requiredRole === "customer" && isBusinessOwner) return null;
+    if (roleMismatch || roleUnknown) return null;
 
     return <>{children}</>;
 }

@@ -6,16 +6,15 @@ import { motion } from "framer-motion";
 import { useLanguage } from "@/hooks";
 import { useAnalytics } from "./hooks";
 import { KpiCard, PeriodSelector, TopServicesCard, getKpiCards } from "./components";
+import BusinessLoading from "../loading";
 
 function Analytics() {
     const { t } = useLanguage();
     const currentBusiness = useBusinessesStore.currentBusiness();
-    const calendar = currentBusiness?.calendar || [];
-    const services = currentBusiness?.services || [];
     const currency = currentBusiness?.currency || "₪";
 
-    const { totalBookings, noShows, cancellations, noShowRate, cancellationRate, topServices, totalRevenue, period, setPeriod } =
-        useAnalytics(calendar, services);
+    const { totalBookings, noShows, cancellations, noShowRate, cancellationRate, topServices, totalRevenue, isLoading, isError, period, setPeriod } =
+        useAnalytics(currentBusiness?.id);
 
     if (!currentBusiness) return null;
 
@@ -36,13 +35,21 @@ function Analytics() {
                 <PeriodSelector period={period} setPeriod={setPeriod} />
             </motion.div>
 
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                {kpiCards.map((card, index) => (
-                    <KpiCard key={card.title} title={card.title} value={card.value} icon={card.icon} index={index} subtitle={card.subtitle} />
-                ))}
-            </div>
+            {isError ? (
+                <p className="text-sm text-destructive">{t("analyticsLoadError")}</p>
+            ) : isLoading ? (
+                <BusinessLoading />
+            ) : (
+                <>
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                        {kpiCards.map((card, index) => (
+                            <KpiCard key={card.title} title={card.title} value={card.value} icon={card.icon} index={index} subtitle={card.subtitle} />
+                        ))}
+                    </div>
 
-            <TopServicesCard topServices={topServices} currency={currency} />
+                    <TopServicesCard topServices={topServices} currency={currency} />
+                </>
+            )}
         </div>
     );
 }

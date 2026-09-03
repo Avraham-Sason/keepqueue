@@ -8,7 +8,7 @@ export type CalendarEventType = "APPOINTMENT" | "VACATION" | "HOLIDAY" | "OTHER"
 
 export type NotificationType = "sms" | "email";
 export type NotificationStatus = "QUEUED" | "SENT" | "FAILED" | "DELIVERED";
-export type UserType = "business" | "customer";
+export type UserType = "business" | "customer" | "admin";
 export type StaffRole = "owner" | "manager" | "employee";
 export type CalendarEventSource = "web" | "admin" | "import";
 export type TS = Timestamp;
@@ -45,7 +45,14 @@ export interface Customer extends UserBase {
     businessIds: ID[];
     blockedByBusinessIds?: ID[];
 }
-export type User = BusinessOwner | Customer;
+
+// Collection: users. Authorization comes from the `admin` custom claim on the Firebase
+// token, never from this document — the user can write their own doc, but not their claims.
+export interface Admin extends UserBase {
+    type: "admin";
+}
+
+export type User = BusinessOwner | Customer | Admin;
 
 export type Weekday = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
@@ -72,6 +79,9 @@ export interface Business extends DocBase {
     operationSchedule: OperationSchedule[];
     currency?: string;
     lang: Language;
+    // IANA zone. Availability and every slot boundary are computed in it, so a business
+    // without one silently gets Israel's clock.
+    timezone?: string;
     logoUrl?: string;
     policy?: Policy;
 }
@@ -112,6 +122,9 @@ export interface CalendarEvent extends DocBase {
     businessId: ID;
     userId: ID;
     serviceId?: ID;
+    // Which staff member is booked. Absent means the business is a single resource — the
+    // model it had before staff scheduling — and such an event blocks everybody.
+    staffId?: ID;
     type: CalendarEventType;
     status: CalendarEventStatus;
     title: string;
@@ -183,8 +196,8 @@ export interface StaffMember extends DocBase {
 export interface Audit extends DocBase {
     businessId: ID;
     userId: ID;
-    entity: "services" | "businesses" | "calendar";
-    action: "create" | "update" | "delete";
+    entity: "services" | "businesses" | "calendar" | "staff" | "customers" | "waitlist" | "reviews";
+    action: "create" | "update" | "delete" | "block" | "unblock" | "moderate";
     subEntity: string;
 }
 

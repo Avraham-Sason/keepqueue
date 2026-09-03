@@ -170,9 +170,7 @@ export function AppointmentCard({
     );
 }
 
-interface EmptyStateProps {}
-
-export function EmptyState({}: EmptyStateProps) {
+export function EmptyState() {
     const { t } = useLanguage();
     return (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>

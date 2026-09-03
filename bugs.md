@@ -2,8 +2,8 @@
 
 **Date:** March 23–27, 2026 (8 sessions)
 **Version:** 1.0.5
-**Open bugs: 56**
-**Closed and removed: 37** — the entries were deleted once each fix was verified; they remain in this file's git history.
+**Open bugs: 51**
+**Closed and removed: 42** — the entries were deleted once each fix was verified; they remain in this file's git history.
 
 ---
 
@@ -68,8 +68,9 @@
   2. Check browser console
 - **Expected:** No accessibility errors
 - **Actual:** Console errors: `DialogContent requires a DialogTitle for the component to be accessible for screen reader users`; also `Missing Description or aria-describedby` warnings
-- **Fix:** Add `<DialogTitle>` (or wrap with `<VisuallyHidden>`) to all `<DialogContent>` components
-- **Impact:** Screen readers cannot properly announce dialog content; WCAG violation
+- **Remaining scope (re-verified 2026-09-01):** every `DialogContent` now has a `DialogTitle`. What is left is the *description* half: the vacation/block dialog at `keepqueue-client/app/business/calendar/Calendar.tsx:181-243` has no `DialogDescription` or `aria-describedby`, so that one still logs the "Missing Description" warning.
+- **Fix:** Add a `DialogDescription` to the calendar block dialog
+- **Impact:** Screen readers cannot properly announce that dialog's purpose; WCAG violation
 
 ---
 
@@ -86,17 +87,6 @@
 
 ---
 
-### BUG-13: Billing Currency Field Empty on Edit Details
-- **Severity:** Medium
-- **Location:** Edit Business Details page
-- **Steps to reproduce:**
-  1. Navigate to Edit Details via sidebar
-  2. Scroll to billing/currency section
-- **Expected:** Currency field shows the configured currency (e.g., ILS, USD)
-- **Actual:** Currency field is blank/empty
-
----
-
 ### BUG-14: Customer Marketplace Route Returns 404
 - **Severity:** Medium
 - **Location:** `/customer/marketplace`
@@ -106,19 +96,6 @@
 - **Expected:** Marketplace page loads
 - **Actual:** 404 page — route not implemented
 - **Impact:** Dead link in navigation
-
----
-
-### BUG-15: Accessibility Mode Has No Visible Effect
-- **Severity:** Medium
-- **Location:** Public booking page — accessibility toggle button in navbar
-- **Steps to reproduce:**
-  1. Visit public booking page
-  2. Click accessibility icon (person icon) in the top navbar
-  3. Observe the page
-- **Expected:** Enhanced contrast, larger fonts, underlined links, or other accessibility improvements
-- **Actual:** Button state toggles (`aria-pressed` changes from false to true, label changes to "disableAccessibilityMode") but zero visual changes are applied
-- **Impact:** Accessibility feature is non-functional; misleading to users who need it
 
 ---
 
@@ -340,6 +317,7 @@
 - **Also affects:** `SRescheduleAppointment` (line 103) — same pattern
 - **Root cause:** No locking mechanism, no database constraints, cache sync is async
 - **Fix:** Read calendar events within the Firestore transaction (using `tx.get()`) instead of reading from cache; or add a distributed lock
+- **Narrowed 2026-09-02, not closed:** every appointment write now merges into the cache synchronously (`cacheCalendarEvent`, `appointments/helpers.ts`), so the window is no longer "until the snapshot listener fires" but "between two requests that both check before either writes". The fix above is still required.
 - **Impact:** Double-bookings possible under concurrent load
 
 ---
@@ -399,9 +377,9 @@
 - **Severity:** Medium
 - **Location:** `keepqueue-client/components/BookingInterface/hooks.ts` lines 207-230
 - **Description:** When generating available date buttons, `moment().tz(userTimeZone).startOf("day")` is used as the base, but availability slots come from the server in UTC. A user in Tokyo (+09:00) booking a 9am Tel Aviv appointment may see the slot under the wrong date.
-- **Also:** `withinSchedule()` (lines 175-194) uses `moment.utc()` which may incorrectly validate times if the business schedule assumes a different timezone
-- **Fix:** Ensure date grouping uses business timezone, not user timezone, for slot assignment
-- **Impact:** Cross-timezone users may see slots on wrong dates
+- **Remaining scope (re-verified 2026-09-01):** the client side is fixed — slots are grouped and matched by absolute milliseconds in the user's timezone (`hooks.ts:213,244,264-277`), and `withinSchedule()` is now dead code that is never called. Two server-side defects remain: (a) `keepqueue-server/src/actions/businesses/appointments/helpers.ts:98-100` adds interval offsets as fixed milliseconds from local midnight, so every slot shifts an hour on DST-transition days; (b) the business timezone is always the hardcoded `Asia/Jerusalem` fallback (BUG-44).
+- **Fix:** Build day boundaries with `moment.tz(...).startOf("day").add(minutes, "minutes")` instead of fixed millisecond arithmetic; delete the dead `withinSchedule()` and its two memos
+- **Impact:** Every slot on a DST-transition day is offered at the wrong wall-clock time
 
 ---
 
@@ -585,39 +563,12 @@
 
 ---
 
-### BUG-76: English Mode — Sign-In Page Still Shows Hebrew Text
-- **Severity:** Medium
-- **Location:** `/auth/signin/business` and `/auth/signin/customer`
-- **Description:** With `language=en` cookie set, sign-in form labels, buttons, and links remain in Hebrew. `SignInForm` is a client component that reverts to Zustand default (Hebrew) before `LanguageInitializer` effect runs.
-- **Fix:** Read language from cookie on server render or ensure Zustand hydrates before form renders
-- **Impact:** i18n broken on sign-in pages
-
----
-
 ### BUG-77: English Mode — Landing Page Renders RTL with `lang="he"`
 - **Severity:** Medium
 - **Location:** Landing page root layout
 - **Description:** With `language=en` cookie, first load still shows `<html dir="rtl" lang="he">`. The `LanguageInitializer` client component only updates `document.documentElement` after hydration.
 - **Fix:** Read language cookie server-side in root layout to set initial dir/lang
 - **Impact:** English users see RTL layout on first load
-
----
-
-### BUG-78: English Mode — Testimonials and CTA Text Remain Hebrew
-- **Severity:** Medium
-- **Location:** Landing page testimonials and CTA sections
-- **Description:** Testimonial names ("שרה כהן", "דוד לוי", "מיכל אברהם"), "מוכן להתחיל?" heading, and newsletter section don't switch to English.
-- **Fix:** Add missing translation keys to `en.json`
-- **Impact:** Incomplete English translation
-
----
-
-### BUG-80: Booking Page Shows No Services — Empty Service Selection
-- **Severity:** Medium
-- **Location:** `/home/[businessId]` — Step 1
-- **Description:** "בחר שירות" step shows no service cards, only the "continue" button. Services are fetched via the same failing Firestore direct query (related to BUG-73).
-- **Fix:** Same as BUG-73 — fix data source
-- **Impact:** Customers cannot complete a booking
 
 ---
 
@@ -684,9 +635,7 @@
 | 10 | Medium | Address shows "-" on booking page | Small |
 | 11 | Medium | DialogContent missing DialogTitle | Small |
 | 12 | Medium | Copy link — no feedback | Small |
-| 13 | Medium | Currency field empty | Small |
 | 14 | Medium | Marketplace 404 | Medium |
-| 15 | Medium | Accessibility mode no-op | Medium |
 | 16 | Low | No "All time" analytics filter | Small |
 | 18 | Low | LCP image missing eager | 1 line |
 | 19 | Low | Duplicate service names | Data issue |
@@ -724,10 +673,7 @@
 | 73 | High | Public booking page Firebase permission error — business info missing | Medium |
 | 74 | Medium | All 9 footer links return 404 | Medium |
 | 75 | Medium | Invalid business ID shows booking page instead of 404 | Small |
-| 76 | Medium | English mode: sign-in still shows Hebrew text | Medium |
 | 77 | Medium | English mode: landing page renders RTL with lang="he" | Medium |
-| 78 | Medium | English mode: testimonials and CTA remain Hebrew | Small |
-| 80 | Medium | Booking page shows no services — empty selection | Medium (BUG-73) |
 | 81 | Medium | Testimonial section uses placeholder images | Small |
 | 82 | Medium | Newsletter "Start Now" button non-functional | Small |
 | 83 | Medium | Nav #pricing link points to non-existent section | Small |

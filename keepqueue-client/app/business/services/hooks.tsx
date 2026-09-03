@@ -2,8 +2,11 @@ import React, { useState } from "react";
 import type { Service } from "@/lib/types";
 import { setDocument } from "@/lib/firebase";
 import { useRefreshBusiness } from "../hooks";
+import { useLanguage } from "@/hooks";
+import { toast } from "sonner";
 
 export function useServices() {
+    const { t } = useLanguage();
     const [deleteServiceId, setDeleteServiceId] = useState<string | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
     const refreshBusiness = useRefreshBusiness();
@@ -14,8 +17,10 @@ export function useServices() {
             await setDocument("services", serviceId, { active: false });
             setDeleteServiceId(null);
             refreshBusiness();
+            toast.success(t("changesSaved"));
         } catch (error) {
             console.error("Error deleting service:", error);
+            toast.error(t("businessDetailsSaveError"));
         } finally {
             setIsDeleting(false);
         }

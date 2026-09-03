@@ -1,10 +1,5 @@
 import { useMemo } from "react";
-import type { Review } from "@/lib/types";
-import type { BusinessWithRelations } from "@/lib/types/business";
-
-interface ReviewWithUser extends Review {
-    user: { firstName?: string; lastName?: string; email?: string };
-}
+import type { BusinessWithRelations, ReviewWithUser } from "@/lib/types/business";
 
 export function useReviewStats(reviews: ReviewWithUser[]) {
     return useMemo(() => {

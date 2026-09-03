@@ -10,7 +10,9 @@ export const useBusiness = (businessId?: string) => {
     const user = useAuthStore.user();
     const isBusinessOwner = useAuthStore.isBusinessOwner();
     const setCurrentBusiness = useBusinessesStore.setCurrentBusiness();
-    const finalBusinessId = businessId || isBusinessOwner ? (user as BusinessOwner)?.ownedBusinessIds?.[0] : "";
+    // The parentheses matter: `a || b ? c : d` parses as `(a || b) ? c : d`, which threw the
+    // caller's businessId away and loaded the viewer's own business instead.
+    const finalBusinessId = businessId || (isBusinessOwner ? (user as BusinessOwner)?.ownedBusinessIds?.[0] : "");
 
     const queryKey = ["business", finalBusinessId];
 

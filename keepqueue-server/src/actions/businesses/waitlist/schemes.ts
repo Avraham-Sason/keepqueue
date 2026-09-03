@@ -9,8 +9,9 @@ export const addToWaitlistSchema = object({
     preferredWindow: object({
         from: number().int().positive(),
         to: number().int().positive(),
-    }),
-    priority: number().int().min(0).optional(),
+    }).refine((w) => w.to > w.from, { path: ["to"], message: "the window must end after it starts" }),
+    // priority is deliberately not accepted from the request. It used to be, which let a
+    // customer send 999999 and jump the queue they were waiting in.
 });
 
 export type AddToWaitlistModel = z.infer<typeof addToWaitlistSchema>;

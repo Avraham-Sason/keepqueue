@@ -166,16 +166,10 @@ export function useEditDetailsForm() {
 
         setIsSaving(true);
         try {
-            const businessSaved = await setDocument("businesses", currentBusiness.id, businessPayload);
-            if (!businessSaved) {
-                throw new Error("business_update_failed");
-            }
+            await setDocument("businesses", currentBusiness.id, businessPayload);
 
             if (businessOwner?.id) {
-                const ownerSaved = await setDocument("users", businessOwner.id, ownerPayload);
-                if (!ownerSaved) {
-                    throw new Error("owner_update_failed");
-                }
+                await setDocument("users", businessOwner.id, ownerPayload);
 
                 useAuthStoreBase.setState((prevState) => ({
                     ...prevState,

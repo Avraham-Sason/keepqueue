@@ -1,6 +1,6 @@
 "use client";
 import { useSettingsStore } from "@/lib/store";
-import { useState, useEffect } from "react";
+import { useSyncExternalStore } from "react";
 
 export function useLanguage() {
     const language = useSettingsStore.language();
@@ -12,18 +12,21 @@ export function useLanguage() {
 
 const MOBILE_BREAKPOINT = 768;
 
+// useSyncExternalStore is the right shape for "read a browser API and subscribe to it": the
+// server snapshot is explicit, and the value is read during render rather than set from an
+// effect — which is what made every mobile layout render desktop first, then flip.
+const mobileQuery = () => window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`);
+
+const subscribeToMobile = (onChange: () => void) => {
+    const mql = mobileQuery();
+    mql.addEventListener("change", onChange);
+    return () => mql.removeEventListener("change", onChange);
+};
+
 export function useIsMobile() {
-    const [isMobile, setIsMobile] = useState<boolean | undefined>(undefined);
-
-    useEffect(() => {
-        const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`);
-        const onChange = () => {
-            setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
-        };
-        mql.addEventListener("change", onChange);
-        setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
-        return () => mql.removeEventListener("change", onChange);
-    }, []);
-
-    return !!isMobile;
+    return useSyncExternalStore(
+        subscribeToMobile,
+        () => mobileQuery().matches,
+        () => false,
+    );
 }

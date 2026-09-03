@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { RiCalendarLine, RiDeleteBinLine } from "@remixicon/react";
+import { Calendar as CalendarIcon, Trash2 } from "lucide-react";
 import { format, isBefore } from "date-fns";
 
 import { DefaultEndHour, DefaultStartHour, EndHour, StartHour, CalendarEvent, EventColor } from "@/components/CalendarComponent";
@@ -187,7 +187,7 @@ export function EventDialog({ event, isOpen, onClose, onSave, onDelete }: EventD
                                         <span className={cn("truncate", !startDate && "text-muted-foreground")}>
                                             {startDate ? format(startDate, "PPP", { locale }) : translate("calendarDialogPickDate")}
                                         </span>
-                                        <RiCalendarLine size={16} className="shrink-0 text-muted-foreground/80" aria-hidden="true" />
+                                        <CalendarIcon size={16} className="shrink-0 text-muted-foreground/80" aria-hidden="true" />
                                     </Button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-auto p-2" align={isRtl ? "end" : "start"} dir={dir}>
@@ -246,7 +246,7 @@ export function EventDialog({ event, isOpen, onClose, onSave, onDelete }: EventD
                                         <span className={cn("truncate", !endDate && "text-muted-foreground")}>
                                             {endDate ? format(endDate, "PPP", { locale }) : translate("calendarDialogPickDate")}
                                         </span>
-                                        <RiCalendarLine size={16} className="shrink-0 text-muted-foreground/80" aria-hidden="true" />
+                                        <CalendarIcon size={16} className="shrink-0 text-muted-foreground/80" aria-hidden="true" />
                                     </Button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-auto p-2" align={isRtl ? "end" : "start"} dir={dir}>
@@ -300,7 +300,7 @@ export function EventDialog({ event, isOpen, onClose, onSave, onDelete }: EventD
                 <DialogFooter className={cn("flex-row sm:justify-between", isRtl && "flex-row-reverse sm:flex-row-reverse")}>
                     {event?.id && (
                         <Button variant="outline" size="icon" onClick={handleDelete} aria-label={translate("calendarDialogDeleteEventAria")}>
-                            <RiDeleteBinLine size={16} aria-hidden="true" />
+                            <Trash2 size={16} aria-hidden="true" />
                         </Button>
                     )}
                     <div className={cn("flex flex-1 justify-end gap-2", isRtl && "justify-start")}>

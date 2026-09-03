@@ -1,24 +1,26 @@
 import express, { type Router } from "express";
 import {
-    S_getBusiness, S_getCollection, S_getAvailabilityByServiceId, S_getBusinessCustomers,
+    S_getBusiness, S_getMyAppointments, S_getAvailabilityByServiceId, S_getBusinessCustomers,
     S_getUserById, S_getBusinessStaff, S_getBusinessWaitlist, S_getBusinessReviews,
-    S_getBusinessRatings, S_getBusinessAppointments, S_getBusinessAnalytics,
+    S_getBusinessRatings, S_getBusinessAppointments, S_getBusinessAnalytics, S_searchBusinesses,
 } from "./services";
 import {
-    getBusinessSchema, getCollectionSchema, getAvailabilityByServiceIdSchema,
+    getBusinessSchema, getMyAppointmentsSchema, getAvailabilityByServiceIdSchema,
     getBusinessCustomersSchema, getUserByIdSchema, getBusinessStaffSchema,
     getBusinessWaitlistSchema, getBusinessReviewsSchema, getBusinessRatingsSchema,
-    getBusinessAppointmentsSchema, getBusinessAnalyticsSchema,
+    getBusinessAppointmentsSchema, getBusinessAnalyticsSchema, searchBusinessesSchema,
 } from "./schemes";
-import { authGuard, requireBusinessOwnership, validateBody } from "../middlewares";
+import { attachUserIfPresent, authGuard, requireBusinessOwnership, validateBody } from "../middlewares";
 
 const dataRouter: Router = express.Router();
 
 dataRouter.get("/", (req, res) => res.send("OK from data"));
 
-dataRouter.post("/getCollection", authGuard(), validateBody(getCollectionSchema), S_getCollection);
+dataRouter.post("/getMyAppointments", authGuard(), validateBody(getMyAppointmentsSchema), S_getMyAppointments);
 
-dataRouter.post("/getBusiness", validateBody(getBusinessSchema), S_getBusiness);
+dataRouter.post("/searchBusinesses", validateBody(searchBusinessesSchema), S_searchBusinesses);
+
+dataRouter.post("/getBusiness", attachUserIfPresent(), validateBody(getBusinessSchema), S_getBusiness);
 
 dataRouter.post("/getAvailabilityByServiceId", validateBody(getAvailabilityByServiceIdSchema), S_getAvailabilityByServiceId);
 
