@@ -43,8 +43,14 @@ log "current revision $PREVIOUS_REV"
 
 log "fetching $TARGET"
 runuser -u "$ADMIN_USER" -- git -C "$CHECKOUT" fetch --quiet origin
-runuser -u "$ADMIN_USER" -- git -C "$CHECKOUT" checkout --quiet "$TARGET" \
-    || die "checkout of $TARGET failed; nothing was changed"
+
+# This checkout is a deploy artefact, not somebody's working copy, so it is reset to the target
+# rather than merged into it. A plain `checkout` refuses whenever a tracked file has drifted,
+# and one had: .gitattributes normalised line endings after bugs.md was already on disk with
+# CRLF, so git reported it modified for ever and every deploy died on a whitespace difference
+# in a documentation file. Reset also guarantees the built revision is exactly the named one.
+runuser -u "$ADMIN_USER" -- git -C "$CHECKOUT" reset --hard --quiet "$TARGET" \
+    || die "reset to $TARGET failed; nothing was changed"
 NEW_REV="$(runuser -u "$ADMIN_USER" -- git -C "$CHECKOUT" rev-parse --short HEAD)"
 log "deploying $NEW_REV"
 
