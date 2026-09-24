@@ -62,7 +62,7 @@ export const S_getBusiness: RouterService = async (req, res, next) => {
         return;
     }
 
-    const [users, usersMap, businesses, businessesMap, services, servicesMap, calendar, waitlist, messageTemplates, reviews, staff] = [
+    const [users, usersMap, businesses, businessesMap, services, servicesMap, calendar, waitlist, reviews, staff] = [
         cacheManager.get("users", []),
         cacheManager.get("usersMap", new Map()),
         cacheManager.get("businesses", []),
@@ -71,7 +71,6 @@ export const S_getBusiness: RouterService = async (req, res, next) => {
         cacheManager.get("servicesMap", new Map()),
         cacheManager.get("calendar", []),
         cacheManager.get("waitlist", []),
-        cacheManager.get("messageTemplates", []),
         cacheManager.get("reviews", []),
         cacheManager.get("staff", []) as StaffMember[],
     ];
@@ -92,8 +91,6 @@ export const S_getBusiness: RouterService = async (req, res, next) => {
         }
 
         const businessServices = services.filter((s) => s.businessId === business.id);
-
-        const businessMessageTemplates = messageTemplates.filter((m) => m.businessId === business.id);
 
         const businessCalendar = calendar
             .filter((e) => e.businessId === business.id)
@@ -141,7 +138,6 @@ export const S_getBusiness: RouterService = async (req, res, next) => {
                 services: businessServices,
                 calendar: businessCalendar,
                 waitlist: businessWaitlist,
-                messageTemplates: businessMessageTemplates,
                 reviews: businessReviews,
                 availability,
                 customers: businessCustomers,
@@ -170,7 +166,6 @@ export const S_getBusiness: RouterService = async (req, res, next) => {
             reviews: businessReviews.filter((r) => !r.flagged).map(({ user, ...rest }) => ({ ...rest, user: publicReviewer(user) })),
             availability,
             waitlist: [],
-            messageTemplates: [],
             customers: [],
             // Enough to let a customer choose who they book with, and nothing that belongs to
             // the employment relationship — no email, phone or notes.

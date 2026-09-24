@@ -51,8 +51,6 @@ const post = async (path: string, body: unknown, token?: string) => {
 const cleanup = async () => {
     for (const id of events) await db.collection("calendar").doc(id).delete().catch(() => undefined);
     for (const id of waitItems) await db.collection("waitlist").doc(id).delete().catch(() => undefined);
-    const logs = await db.collection("notification_logs").where("messageTemplateId", "==", "waitlist_slot_freed").get().catch(() => null);
-    if (logs) for (const d of logs.docs) await d.ref.delete().catch(() => undefined);
 };
 
 const run = async () => {
@@ -102,15 +100,6 @@ const run = async () => {
         ownerTok
     );
     check("a slot is booked so it can be freed again", booked.status === 200, `HTTP ${booked.status} ${booked.body?.error ?? ""}`);
-
-    const eventId = booked.body?.data?.calendarEventId;
-    if (eventId) {
-        await post("/actions/businesses/appointments/cancel", { calendarEventId: eventId }, ownerTok);
-        // The offer goes out in the background.
-        await new Promise((r) => setTimeout(r, 3000));
-        const logs = await db.collection("notification_logs").where("messageTemplateId", "==", "waitlist_slot_freed").get();
-        check("cancelling offers the freed slot to the waiting list", logs.size > 0, `${logs.size} offer(s) logged`);
-    }
 
     await cleanup();
     console.log(`cleaned up ${events.size} event(s), ${waitItems.size} waitlist entr(ies)`);

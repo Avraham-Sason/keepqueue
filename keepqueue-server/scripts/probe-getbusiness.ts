@@ -38,7 +38,7 @@ const describe = (label: string, status: number, data: any) => {
         console.log(`${label.padEnd(10)} HTTP ${status}  (no data)`);
         return;
     }
-    const counts = ["services", "calendar", "reviews", "waitlist", "customers", "staff", "messageTemplates", "availability"]
+    const counts = ["services", "calendar", "reviews", "waitlist", "customers", "staff", "availability"]
         .map((k) => `${k}=${Array.isArray(data[k]) ? data[k].length : "?"}`)
         .join(" ");
     const blob = JSON.stringify(data);

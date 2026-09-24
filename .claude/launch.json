@@ -5,7 +5,8 @@
       "name": "keepqueue-client",
       "runtimeExecutable": "node",
       "runtimeArgs": ["C:/Users/avrah/AppData/Roaming/npm/node_modules/pnpm/bin/pnpm.cjs", "--dir", "keepqueue-client", "dev"],
-      "port": 3000
+      "port": 3001,
+      "autoPort": true
     },
     {
       "name": "keepqueue-server",

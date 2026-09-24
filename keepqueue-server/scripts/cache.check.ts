@@ -46,31 +46,31 @@ const main = async () => {
         [...firestoreCollections]
     );
 
-    /// ...while the cache keeps the camelCase keys its consumers read
-    const templates = captured.find((config) => config.collectionName === "message_templates")!;
-    templates.onFirstTime!([{ id: "t1", content: "hi" }], templates);
-    assert.equal(cacheManager.get("messageTemplates").length, 1);
-    assert.equal(cacheManager.get("messageTemplatesMap").size, 1);
+    /// ...while the cache keeps the array slot and the map slot its consumers read
+    const staff = captured.find((config) => config.collectionName === "staff")!;
+    staff.onFirstTime!([{ id: "t1", firstName: "Dana" }], staff);
+    assert.equal(cacheManager.get("staff").length, 1);
+    assert.equal(cacheManager.get("staffMap").size, 1);
 
     /// a resync replays the whole collection as 'added' — it must upsert, not concat
-    templates.onAdd!([{ id: "t1", content: "hi" }], templates);
-    templates.onAdd!([{ id: "t1", content: "hi" }], templates);
-    assert.equal(cacheManager.get("messageTemplates").length, 1);
-    assert.equal(cacheManager.get("messageTemplatesMap").size, 1);
+    staff.onAdd!([{ id: "t1", firstName: "Dana" }], staff);
+    staff.onAdd!([{ id: "t1", firstName: "Dana" }], staff);
+    assert.equal(cacheManager.get("staff").length, 1);
+    assert.equal(cacheManager.get("staffMap").size, 1);
 
     /// an edit replaces in place, a genuinely new document is still appended
-    templates.onAdd!([{ id: "t1", content: "edited" }, { id: "t2" }], templates);
-    assert.equal(cacheManager.get("messageTemplates").length, 2);
-    assert.equal(cacheManager.get("messageTemplates")[0].content, "edited");
+    staff.onAdd!([{ id: "t1", firstName: "Dana B" }, { id: "t2" }], staff);
+    assert.equal(cacheManager.get("staff").length, 2);
+    assert.equal(cacheManager.get("staff")[0].firstName, "Dana B");
 
     /// the merge this replaced is what grew unbounded, and it is still one option away
-    cacheManager.set("messageTemplates", [{ id: "t1" }, { id: "t2" }] as any, { merge: true });
-    assert.equal(cacheManager.get("messageTemplates").length, 4);
+    cacheManager.set("staff", [{ id: "t1" }, { id: "t2" }] as any, { merge: true });
+    assert.equal(cacheManager.get("staff").length, 4);
 
     /// removals clear both slots
-    templates.onRemove!([{ id: "t1" }, { id: "t2" }], templates);
-    assert.equal(cacheManager.get("messageTemplates").length, 0);
-    assert.equal(cacheManager.get("messageTemplatesMap").size, 0);
+    staff.onRemove!([{ id: "t1" }, { id: "t2" }], staff);
+    assert.equal(cacheManager.get("staff").length, 0);
+    assert.equal(cacheManager.get("staffMap").size, 0);
 
     console.log("snapshot boot + cache merge: all checks passed");
 };

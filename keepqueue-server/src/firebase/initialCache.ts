@@ -9,9 +9,9 @@ type FirestoreCollection = (typeof firestoreCollections)[number];
 type CamelCase<S extends string> = S extends `${infer Head}_${infer Tail}` ? `${Head}${Capitalize<CamelCase<Tail>>}` : S;
 
 // The Firestore collection name is the single source of truth; the cache key is derived from it.
-// Two hand-written lists is how `message_templates` ended up subscribed as `messageTemplates`,
-// which delivers nothing. Typing the result as CamelCase<FirestoreCollection> makes tsc reject a
-// collection whose derived key is not a real CacheStore slot.
+// Keeping a second hand-written list is how a snake_case collection ends up subscribed under its
+// camelCase key, which delivers nothing. Typing the result as CamelCase<FirestoreCollection>
+// makes tsc reject a collection whose derived key is not a real CacheStore slot.
 const cacheKeyOf = (collection: FirestoreCollection) =>
     collection.replace(/_(.)/g, (_, char: string) => char.toUpperCase()) as CamelCase<FirestoreCollection>;
 

@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { use } from "react";
-import { Calendar, CalendarDays, Clock, HeartHandshake, MessageSquare, Users, Star, BarChart3, Building, User, Smartphone, LucideIcon } from "lucide-react";
+import { Calendar, CalendarDays, Clock, HeartHandshake, UserCog, Users, Star, BarChart3, Building, User, Smartphone, LucideIcon } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { getServerTranslation, TranslationsKey } from "@translations/server";
@@ -30,9 +30,9 @@ export const FEATURES: FeatureStatic[] = [
         color: "bg-blue-500/10 text-blue-600",
     },
     {
-        icon: MessageSquare,
-        titleKey: "featureSmsRemindersTitle",
-        descriptionKey: "featureSmsRemindersDescription",
+        icon: UserCog,
+        titleKey: "featureStaffSchedulingTitle",
+        descriptionKey: "featureStaffSchedulingDescription",
         color: "bg-green-500/10 text-green-600",
     },
     {

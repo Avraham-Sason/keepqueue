@@ -17,14 +17,6 @@ import {
 } from "./helpers";
 import { CreateAppointmentModel, RescheduleAppointmentModel, UpdateAppointmentStatusModel } from "./schemes";
 import { AuthenticatedRequest } from "../../../middlewares/authGuard";
-import {
-    appointmentCancelledMessage,
-    appointmentConfirmationMessage,
-    notifyInBackground,
-    recipientFor,
-    sendEmail,
-} from "../../../notifications";
-import { offerFreedSlotInBackground } from "../../../notifications/waitlist";
 
 const isBusinessOwner = (req: AuthenticatedRequest, businessId: string): boolean => {
     const uid = req.user?.uid;
@@ -145,13 +137,6 @@ export const SCreateAppointment: RouterService = async (req, res, next) => {
 
         cacheCalendarEvent({ ...created, id: created.id! });
 
-        const business = (cacheManager.get("businessesMap", new Map()) as Map<string, Business>).get(businessId);
-        const to = recipientFor((cacheManager.get("usersMap", new Map()) as Map<string, User>).get(userId));
-        if (business && to) {
-            const { subject, body } = appointmentConfirmationMessage(created, business, service ?? undefined);
-            notifyInBackground(() => sendEmail({ to, subject, body, businessId, templateKey: "appointment_confirmation" }));
-        }
-
         res.json(jsonOK({ calendarEventId: created.id }));
     } catch (error: any) {
         next(error);
@@ -220,17 +205,6 @@ export const SCancelAppointment: RouterService = async (req, res, next) => {
 
         if (!alreadyCancelled) {
             cacheCalendarEvent({ id: calendarEventId, status: "CANCELLED" });
-            const event = (cacheManager.get("calendarMap", new Map()) as Map<string, CalendarEvent>).get(calendarEventId);
-            const business = event ? (cacheManager.get("businessesMap", new Map()) as Map<string, Business>).get(event.businessId) : undefined;
-            const to = event ? recipientFor((cacheManager.get("usersMap", new Map()) as Map<string, User>).get(event.userId)) : undefined;
-            if (event && business && to) {
-                const service = event.serviceId ? getServiceById(event.serviceId) : undefined;
-                const { subject, body } = appointmentCancelledMessage(event, business, service ?? undefined);
-                notifyInBackground(() => sendEmail({ to, subject, body, businessId: event.businessId, templateKey: "appointment_cancelled" }));
-            }
-            // A cancellation is the only moment a slot becomes free, so it is where the waiting
-            // list stops being storage and starts being a feature.
-            if (event) offerFreedSlotInBackground(event);
         }
         res.json(jsonOK({ calendarEventId }));
     } catch (error) {

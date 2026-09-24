@@ -55,7 +55,7 @@ npm run logs | status | health
 
 ### Firestore rules tests
 ```bash
-cd rules-test && npm test    # 29 assertions against the Firestore emulator
+cd rules-test && npm test    # 28 assertions against the Firestore emulator
 ```
 Run this before `deploy:rules` — the rules are the one artefact where a mistake locks real users
 out, and the suite asserts both that each hole stays shut and that the product still works. It
@@ -216,23 +216,22 @@ index in `firestore.indexes.json`. **`deploy:rules` deploys rules and indexes to
 index that is missing or still building makes every booking fail with `FAILED_PRECONDITION`, and
 a fresh index takes a few minutes to build after deploy.
 
-### Notifications
+### Notifications: none, deliberately
 
-`src/notifications/` sends the booking confirmation, the cancellation notice, and a reminder a
-day before. Delivery goes to Resend over plain HTTPS — one POST is not worth an SDK in a server
-holding Firebase admin credentials.
+**The platform sends nothing.** No confirmation, no cancellation notice, no reminder, no
+waiting-list offer. The sending layer, the `notification_logs` and `message_templates`
+collections and their cache slots were all removed rather than left dormant behind a flag —
+code that cannot run is code nobody maintains, and `git show b1a2630` has the Resend
+implementation if it is ever wanted back.
 
-**It is off until configured.** With no `resend_api_key` / `notification_from` the attempt is
-still recorded in `notification_logs` with status `FAILED` and a "not configured" reason, so the
-feature can be deployed and inspected before signing up to a provider. Set both to turn it on.
+Two things survive on purpose, because they are account data rather than machinery:
+`NotificationType` (`"sms" | "email"`) and `User.contacts`, the per-channel consent flag written
+at signup and by the admin endpoint. Keeping them means turning delivery back on is a feature,
+not a migration.
 
-Reminders are an in-process sweep every 15 minutes over the cache (`notifications/reminders.ts`),
-not a job queue. A send is claimed by creating `notification_logs/{eventId}_reminder` with
-`create()`, which fails if it exists — so a restart, or a second instance, cannot send twice.
-`npm run check:reminders` covers the window with no credentials.
-
-A booking is never failed by a notification: every send is fire-and-forget behind
-`notifyInBackground`.
+Consequences worth stating plainly: a customer who books learns nothing by email, a business
+owner is told about a new appointment only by opening the dashboard, and the waiting list is
+storage — a customer joins, a slot frees, and nobody is informed.
 
 ### CORS and preview deployments
 

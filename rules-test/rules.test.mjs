@@ -35,7 +35,6 @@ const seed = async () => {
         await setDoc(doc(db, "users", OWNER), { id: OWNER, type: "business", firstName: "Avi", email: "avi@x.com", ownedBusinessIds: [BIZ] });
         await setDoc(doc(db, "services", "svc-1"), { id: "svc-1", businessId: BIZ, name: "Cut", active: true, durationMin: 30 });
         await setDoc(doc(db, "staff", "staff-1"), { id: "staff-1", businessId: BIZ, firstName: "Dana", isActive: true });
-        await setDoc(doc(db, "message_templates", "tpl-1"), { id: "tpl-1", businessId: BIZ, key: "reminder", content: "hi" });
         await setDoc(doc(db, "calendar", "evt-1"), { id: "evt-1", businessId: BIZ, userId: CUSTOMER, type: "APPOINTMENT", status: "BOOKED" });
     });
 };
@@ -102,8 +101,6 @@ await check("owner cannot steal a rival's staff", false, () =>
     setDoc(doc(as(OTHER_OWNER), "staff", "staff-1"), { id: "staff-1", businessId: OTHER_BIZ, firstName: "Dana" }));
 await check("owner cannot read a rival's staff", false, () =>
     getDoc(doc(as(OTHER_OWNER), "staff", "staff-1")));
-await check("owner cannot retag a template into a rival's business", false, () =>
-    updateDoc(doc(as(OWNER), "message_templates", "tpl-1"), { businessId: OTHER_BIZ }));
 
 // ----------------------------------------------------------------- hole 3: /calendar create
 await check("customer cannot write a calendar event directly", false, () =>

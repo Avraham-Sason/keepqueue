@@ -1,4 +1,4 @@
-import { Business, CalendarEvent, Customer, MessageTemplate, Review, Service, StaffMember, TS, User, WaitItem } from "./global";
+import { Business, CalendarEvent, Customer, Review, Service, StaffMember, TS, User, WaitItem } from "./global";
 
 // `user` is optional on purpose. The public shape of /data/getBusiness omits it so a visitor
 // never receives another customer's account, and a record whose user was deleted has none
@@ -22,7 +22,6 @@ export interface BusinessWithRelations extends Business {
     services: Service[];
     calendar: CalendarEventWithRelations[];
     waitlist: WaitItemWithRelations[];
-    messageTemplates: MessageTemplate[];
     reviews: ReviewWithUser[];
     availability: AvailabilitySlot[];
     customers: Customer[];

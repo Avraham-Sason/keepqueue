@@ -122,14 +122,6 @@ service cloud.firestore {
       allow delete: if ownsBusiness(resource.data.businessId);
     }
 
-    match /message_templates/{templateId} {
-      allow read: if ownsBusiness(resource.data.businessId);
-      allow create: if ownsBusiness(request.resource.data.businessId);
-      allow update: if ownsBusiness(resource.data.businessId)
-        && request.resource.data.businessId == resource.data.businessId;
-      allow delete: if ownsBusiness(resource.data.businessId);
-    }
-
     // An audit trail nobody can read back or rewrite from a browser is worth more than one that
     // can be tampered with; the server reads it through the Admin SDK.
     match /audit/{auditId} {
