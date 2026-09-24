@@ -150,6 +150,21 @@ systemctl daemon-reload
 systemctl enable "$UNIT" >/dev/null
 log "enabled $UNIT (not started — deploy.sh starts it once there is a build)"
 
+# The privacy notice promises that server logs are kept for up to 30 days. journald's default
+# bounds the journal by disk size and not by age, so without this the promise is simply untrue:
+# a quiet host keeps every line it has ever written. A drop-in is used rather than an edit to
+# journald.conf so a distribution upgrade cannot silently revert it.
+JOURNALD_DROPIN=/etc/systemd/journald.conf.d/keepqueue-retention.conf
+mkdir -p "$(dirname "$JOURNALD_DROPIN")"
+cat >"$JOURNALD_DROPIN" <<'JOURNALD_EOF'
+[Journal]
+MaxRetentionSec=30day
+JOURNALD_EOF
+systemctl restart systemd-journald
+# Drop whatever already exceeds the promise, so it holds from this moment and not in 30 days.
+journalctl --vacuum-time=30d >/dev/null 2>&1 || true
+log "journal retention capped at 30 days ($JOURNALD_DROPIN)"
+
 runuser -u "$ADMIN_USER" -- bash -lc 'command -v pnpm >/dev/null' \
     || log "WARNING: pnpm is not on $ADMIN_USER's PATH; deploy.sh needs it (npm i -g pnpm)"
 

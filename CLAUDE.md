@@ -216,6 +216,22 @@ index in `firestore.indexes.json`. **`deploy:rules` deploys rules and indexes to
 index that is missing or still building makes every booking fail with `FAILED_PRECONDITION`, and
 a fresh index takes a few minutes to build after deploy.
 
+### The legal pages make promises the system has to keep
+
+`/privacy` and `/terms` are rendered from the translation files, not from Markdown, so a claim
+in them is a string in `en.json` and `he.json`. Two of those claims are enforced elsewhere and
+break silently if that enforcement is removed:
+
+- **"server logs are kept for up to 30 days"** is `MaxRetentionSec=30day`, written by
+  `infra/scripts/setup-keepqueue.sh` as a journald drop-in. journald's own default bounds the
+  journal by disk size, not by age, so without the drop-in the sentence is false.
+- **"the database runs in europe-west1"** is where Firestore was created. A Firestore location
+  cannot be changed after creation, so this one can only break by moving to a new project.
+
+The controller is a private individual (Avraham Sason), not a company, because there is no legal
+entity yet. Both pages still carry the draft banner: they describe the real setup, but no lawyer
+has reviewed them, and charging for the service would require revisiting both.
+
 ### Notifications: none, deliberately
 
 **The platform sends nothing.** No confirmation, no cancellation notice, no reminder, no
