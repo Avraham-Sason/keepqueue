@@ -5,7 +5,14 @@ import { useBusinessesStore } from "@/lib/store";
 import { useAuthStore } from "@/lib/store";
 import type { User } from "@/lib/types";
 import BusinessLoading from "../loading";
-import { BusinessDetailsSections, QuickActionsSection, RecentAppointmentsSection, StatsSection, WelcomeSection } from "./components";
+import {
+    BookingLinkSection,
+    BusinessDetailsSections,
+    QuickActionsSection,
+    RecentAppointmentsSection,
+    StatsSection,
+    WelcomeSection,
+} from "./components";
 
 export function DashboardOverview() {
     const params = useParams<{ businessId: string }>();
@@ -28,6 +35,7 @@ export function DashboardOverview() {
     return (
         <div className="space-y-8">
             <WelcomeSection />
+            <BookingLinkSection />
             <StatsSection />
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
                 <RecentAppointmentsSection />
