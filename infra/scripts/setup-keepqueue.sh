@@ -22,10 +22,10 @@ ENV_FILE="$ENV_DIR/$UNIT.env"
 STATE_DIR=/var/lib/keepqueue
 REPO_URL="${REPO_URL:-https://github.com/Avraham-Sason/keepqueue.git}"
 
-# The names the server reads at boot: the eleven Firebase Admin service-account fields
-# (keepqueue-server/src/firebase/helpers.ts) plus the three the HTTP layer reads. Values belong
-# on the host and nowhere else, so only the names are ever written here.
-ENV_VARS=(
+# The names the server reads at boot. The eleven Firebase Admin service-account fields
+# (keepqueue-server/src/firebase/helpers.ts) are required; the rest have working defaults.
+# Values belong on the host and nowhere else, so only the names are ever written here.
+REQUIRED_VARS=(
     type
     project_id
     private_key_id
@@ -37,9 +37,13 @@ ENV_VARS=(
     auth_provider_x509_cert_url
     client_x509_cert_url
     universe_domain
+)
+OPTIONAL_VARS=(
     PORT
     allowed_origins
     vercel_preview_scope
+    sentry_dsn
+    node_env
 )
 
 log() { echo "[setup] $*"; }
@@ -78,24 +82,30 @@ install -d -m 0755 "$STATE_DIR"
 
 install -d -o root -g "$SERVICE_USER" -m 0750 "$ENV_DIR"
 if [ -f "$ENV_FILE" ]; then
+    # An empty assignment still sets the variable, and dotenv never overrides a set variable, so
+    # an unfilled `type=` is worse than absent: it hides every other source and crashes the boot.
+    # Checking for the name alone reported such a file as complete while the API crash-looped.
     missing=""
-    for name in "${ENV_VARS[@]}"; do
-        grep -q "^${name}=" "$ENV_FILE" || missing="$missing $name"
+    for name in "${REQUIRED_VARS[@]}"; do
+        grep -qE "^${name}=\"?[^\"]" "$ENV_FILE" || missing="$missing $name"
     done
     if [ -n "$missing" ]; then
-        log "WARNING: $ENV_FILE is missing:$missing"
+        log "WARNING: $ENV_FILE has no value for:$missing — the service cannot boot"
     else
-        log "$ENV_FILE holds all ${#ENV_VARS[@]} variables; left untouched"
+        log "$ENV_FILE holds all ${#REQUIRED_VARS[@]} required variables; left untouched"
     fi
 else
     {
-        echo "# keepqueue-api environment. Filled in on the host only — never committed."
-        echo "# systemd reads this file verbatim: one NAME=value per line, no 'export', no shell"
-        echo "# expansion. private_key stays on a single line with literal \\n between its lines,"
-        echo "# which is the form src/firebase/helpers.ts unescapes."
-        echo "# PORT must match the port infra/deploy.sh polls for health (9000)."
-        for name in "${ENV_VARS[@]}"; do
-            echo "$name="
+        cat <<'HEADER_EOF'
+# keepqueue-api environment. Filled in on the host only — never committed.
+# One NAME="value" per line, no 'export'. Keep every value in double quotes: unquoted, systemd
+# reads a backslash as an escape and private_key's literal \n becomes a bare n. Quoted, the
+# private_key from the service-account JSON can be pasted exactly as it appears there.
+# PORT must match the port infra/deploy.sh polls for health (9000).
+# Uncomment each line as you fill it in; a commented line sets nothing.
+HEADER_EOF
+        for name in "${REQUIRED_VARS[@]}" "${OPTIONAL_VARS[@]}"; do
+            echo "#$name=\"\""
         done
     } > "$ENV_FILE"
     log "wrote template $ENV_FILE — fill it in before starting the service"
