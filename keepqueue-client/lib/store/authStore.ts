@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { type User } from "../types";
 import { createSelectors } from "./utils";
-import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "firebase/auth";
+import { onAuthStateChanged, signInWithEmailAndPassword, signOut, type User as FirebaseUser } from "firebase/auth";
 import { auth } from "../firebase/connect";
 import { getDocumentByIdOrThrow } from "../firebase";
 import { useBusinessesStoreBase } from "./businesses";
@@ -14,6 +14,7 @@ interface AuthState {
     isAuthenticated: boolean;
     isBusinessOwner: boolean;
     isAdmin: boolean;
+    sessionResolved: boolean;
     login: (email: string, password: string) => Promise<{ success: boolean; error?: string; user?: User; isBusinessOwner?: boolean }>;
     logout: () => Promise<void>;
 }
@@ -37,6 +38,7 @@ export const useAuthStoreBase = create<AuthState>()(
             isAuthenticated: false,
             isBusinessOwner: false,
             isAdmin: false,
+            sessionResolved: false,
 
             login: async (email, password) => {
                 let signedIn = false;
@@ -88,24 +90,29 @@ const clearSession = () => {
     useAuthStoreBase.setState({ user: null, isAuthenticated: false, isBusinessOwner: false, isAdmin: false });
 };
 
-if (typeof window !== "undefined") {
-    onAuthStateChanged(auth, async (firebaseUser) => {
-        if (!firebaseUser) {
-            if (useAuthStoreBase.getState().isAuthenticated) clearSession();
+const syncSessionWith = async (firebaseUser: FirebaseUser | null) => {
+    if (!firebaseUser) {
+        if (useAuthStoreBase.getState().isAuthenticated) clearSession();
+        return;
+    }
+    if (useAuthStoreBase.getState().user?.id === firebaseUser.uid) return;
+    try {
+        const foundUser = await loadProfile(firebaseUser.uid);
+        if (!foundUser) {
+            clearSession();
             return;
         }
-        if (useAuthStoreBase.getState().user?.id === firebaseUser.uid) return;
-        try {
-            const foundUser = await loadProfile(firebaseUser.uid);
-            if (!foundUser) {
-                clearSession();
-                return;
-            }
-            useAuthStoreBase.setState(sessionFrom(foundUser));
-        } catch {
-            // A failed read is not proof the account is gone. Leave the persisted session
-            // alone so an offline reload does not log the user out.
-        }
+        useAuthStoreBase.setState(sessionFrom(foundUser));
+    } catch {
+        // A failed read is not proof the account is gone. Leave the persisted session
+        // alone so an offline reload does not log the user out.
+    }
+};
+
+if (typeof window !== "undefined") {
+    onAuthStateChanged(auth, async (firebaseUser) => {
+        await syncSessionWith(firebaseUser);
+        useAuthStoreBase.setState({ sessionResolved: true });
     });
 }
 

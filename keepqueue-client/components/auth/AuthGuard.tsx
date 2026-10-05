@@ -18,6 +18,10 @@ const signInPathFor = (role?: Role) => (role === "customer" ? "/auth/signin/cust
 const homePathFor = (role: Role) => (role === "admin" ? "/admin" : role === "business" ? "/business" : "/customer/dashboard");
 
 export function AuthGuard({ children, requiredRole }: AuthGuardProps) {
+    // During hydration zustand serves the store's initial state, not the persisted one, so on
+    // every reload isAuthenticated reads false for one render. Deciding then signed out a live
+    // session; nothing is decided until Firebase has reported and the store has synced to it.
+    const sessionResolved = useAuthStore.sessionResolved();
     const isAuthenticated = useAuthStore.isAuthenticated();
     const user = useAuthStore.user();
     const router = useRouter();
@@ -29,6 +33,7 @@ export function AuthGuard({ children, requiredRole }: AuthGuardProps) {
     const roleUnknown = !!requiredRole && !actualRole;
 
     useEffect(() => {
+        if (!sessionResolved) return;
         if (!isAuthenticated) {
             router.replace(signInPathFor(requiredRole));
             return;
@@ -36,9 +41,9 @@ export function AuthGuard({ children, requiredRole }: AuthGuardProps) {
         if (roleMismatch && actualRole) {
             router.replace(homePathFor(actualRole));
         }
-    }, [isAuthenticated, roleMismatch, actualRole, requiredRole, router]);
+    }, [sessionResolved, isAuthenticated, roleMismatch, actualRole, requiredRole, router]);
 
-    if (!isAuthenticated) return null;
+    if (!sessionResolved || !isAuthenticated) return null;
     if (roleMismatch || roleUnknown) return null;
 
     return <>{children}</>;
