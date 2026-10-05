@@ -118,6 +118,8 @@ cd keepqueue-server && npm run admin:create -- admin@keepqueue.com 'a-long-passw
 
 It sets the `admin` custom claim and writes `users/{uid}` with `type: "admin"`. The claim is the authority; the document only tells the client to route the session to `/admin`. The operator must sign out and back in for the new claim to appear in their ID token. Businesses and their owners are created from `/admin` — there is no self-serve business creation during the free pilot.
 
+**Lost admin password:** run the same command with a new password. It replaces the password and signs out every session. The reset-password page cannot help here, because `keepqueue.com` has no MX record and the reset email to `admin@keepqueue.com` is never delivered.
+
 ### Server: Middleware
 Four middlewares in `src/middlewares/`, applied per route in this order:
 

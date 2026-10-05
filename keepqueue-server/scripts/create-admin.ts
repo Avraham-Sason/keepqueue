@@ -4,7 +4,9 @@
  *   cd keepqueue-server
  *   npx ts-node scripts/create-admin.ts admin@keepqueue.com 'a-long-password'
  *
- * The password argument is only used when the account does not exist yet.
+ * Run against an existing account, a password argument replaces its password and signs out
+ * every session. This is the operator's only recovery path: keepqueue.com has no MX record,
+ * so the "forgot password" email to admin@keepqueue.com is never delivered.
  *
  * Admin authority lives in the Firebase custom claim, not in the users document — the
  * document is writable by its own owner, the claim is writable only by the Admin SDK.
@@ -33,6 +35,10 @@ const run = async () => {
         }
         user = await auth.createUser({ email: normalizedEmail, password, displayName: "Keepqueue Admin" });
         console.log(`created auth user ${user.uid}`);
+    } else if (password) {
+        user = await auth.updateUser(user.uid, { password });
+        await auth.revokeRefreshTokens(user.uid);
+        console.log(`found existing auth user ${user.uid}; password replaced, all sessions signed out`);
     } else {
         console.log(`found existing auth user ${user.uid}`);
     }
